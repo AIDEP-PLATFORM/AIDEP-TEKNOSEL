@@ -1,0 +1,15 @@
+# YOLOv8m Veri Seti — Rapor §3.3
+# Veri bölme: Train %60 / Val %20 / Test %20
+path: .
+train: datasets/train/images
+val:   datasets/val/images
+test:  datasets/test/images
+nc: 7
+names:
+  0: road_blocked        # Enkaz ile kapanan yol
+  1: road_passable       # Hasarlı ama geçilebilir
+  2: road_damaged        # Yüzey hasarı, yavaş geçiş
+  3: building_collapse   # Tamamen/kısmen çökmüş bina
+  4: building_damaged    # Ayakta ama hasarlı bina
+  5: debris_pile         # Enkaz yığını
+  6: clear               # Hasar yok, güvenli

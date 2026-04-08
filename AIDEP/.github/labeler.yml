@@ -1,0 +1,8 @@
+backend:
+  - backend/**
+ai:
+  - ai-service/**
+frontend:
+  - frontend/**
+mobile:
+  - mobile/**

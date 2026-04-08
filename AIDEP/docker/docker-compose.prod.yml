@@ -1,0 +1,3 @@
+version: '3.9'
+# TODO: Issue DOC-001
+services: {}

@@ -1,0 +1,22 @@
+[project]
+name = "aidep-ai-service"
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110.0",
+  "uvicorn[standard]>=0.27.1",
+  "pydantic>=2.6.3",
+  "ultralytics>=8.1.0",      # YOLOv8m — Issue AI-005
+  "xgboost>=2.0.3",          # XGBoost  — Issue AI-009
+  "joblib>=1.3.2",
+  "numpy>=1.26.4",
+  "pillow>=10.2.0",
+  "opencv-python-headless>=4.9.0.80",
+  "httpx>=0.27.0",
+  "minio>=7.2.5",
+]
+[project.optional-dependencies]
+dev = ["pytest>=8.1.1","pytest-asyncio>=0.23.5"]
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

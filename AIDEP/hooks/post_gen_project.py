@@ -1,0 +1,1 @@
+print('AIDEP projesi hazır.')
