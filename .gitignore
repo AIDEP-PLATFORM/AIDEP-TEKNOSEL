@@ -1,9 +1,4 @@
-.env
-.env.local
-secrets/
-ml_models/*.pt
-ml_models/*.pkl
-ml_models/*.onnx
+# Python / Node / Environment
 __pycache__/
 *.pyc
 .venv/
@@ -14,11 +9,17 @@ dist/
 .coverage
 htmlcov/
 .DS_Store
+
+# Data / Temp
 datasets/raw/
 datasets/labeled/
 runs/
-
-# Local Project Environments & Data
-.env
 osrm-data/
 
+# Environments (NEVER COMMIT)
+.env
+.env.local
+
+# Secrets and Models
+secrets/
+ml_models/
