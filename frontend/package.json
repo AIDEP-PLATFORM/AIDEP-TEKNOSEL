@@ -1,1 +1,1 @@
-{"name":"aidep-frontend","version":"1.0.0","private":true,"scripts":{"dev":"vite","build":"tsc -b && vite build","lint":"biome check src/","test":"playwright test"}}
+{"name":"aidep-frontend","version":"1.0.0","private":true,"type":"module","scripts":{"dev":"vite","build":"tsc -b && vite build","lint":"biome check src/","test":"playwright test"}}
