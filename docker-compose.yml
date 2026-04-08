@@ -19,6 +19,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    secrets:
+      - firebase_config
 
   ai:
     build: ./ai-service
@@ -80,8 +82,8 @@ services:
       - aidep-network
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-admin123}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-admin123}
     command: server /data --console-address ":9001"
     volumes:
       - miniodata:/data
@@ -96,7 +98,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER:-admin} $${MINIO_ROOT_PASSWORD:-admin123};
+      /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ACCESS_KEY:-admin} $${MINIO_SECRET_KEY:-admin123};
       /usr/bin/mc mb myminio/aidep-data --ignore-existing;
       /usr/bin/mc anonymous set public myminio/aidep-data;
       exit 0;
@@ -132,3 +134,7 @@ volumes:
   pgdata:
   redisdata:
   miniodata:
+
+secrets:
+  firebase_config:
+    file: ./secrets/firebase-service-account.json
