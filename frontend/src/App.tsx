@@ -1,21 +1,49 @@
-import { Box, Button, Heading, Text, VStack } from '@chakra-ui/react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-export default function App() {
+// Sayfalarımızı içe aktarıyoruz
+import Home from './pages/Home';
+import Login from './pages/Login';
+import LiveMap from './pages/LiveMap';
+import Simulation from './pages/Simulation';
+import Unauthorized from './pages/Unauthorized';
+
+// Korumalı Rota (HOC) bileşenlerimiz
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import RoleRoute from './components/auth/RoleRoute';
+
+function App() {
   return (
-    <Box minH="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.50">
-      <VStack spacing={6} p={8} bg="white" shadow="md" rounded="lg">
-        <Heading color="emergency.500">AIDEP Sistem Testi</Heading>
-        <Text color="gray.600">Bu bir Chakra UI uyarı testidir.</Text>
-        <Button colorScheme="emergency" size="lg">
-          Acil Durum Bildir (Emergency Color)
-        </Button>
-        <Button colorScheme="warning" variant="outline">
-          Uyarı Rengi (Warning)
-        </Button>
-        <Button colorScheme="safe" variant="ghost">
-          Güvenli (Safe Default)
-        </Button>
-      </VStack>
-    </Box>
+    <BrowserRouter>
+      <Routes>
+        {/* HERKESE AÇIK ROTALAR */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+
+        {/* KORUMALI ROTALAR (ProtectedRoute ile sarmalanmış) */}
+        {/* Sadece giriş yapanların göreceği rotalar için bir şemsiye açtık */}
+        <Route element={<ProtectedRoute />}>
+          
+          <Route path="/" element={<Home />} />
+          <Route path="/map" element={<LiveMap />} />
+
+          {/* Sadece spesifik ROLÜ olanların girebileceği alt rotalar */}
+          <Route element={<RoleRoute allowedRoles={['admin']} />}>
+            <Route path="/simulation" element={<Simulation />} />
+          </Route>
+          
+          {/* Diyelim ki STK sayfasına hem admin hem stk girebilir */}
+          <Route element={<RoleRoute allowedRoles={['admin', 'stk']} />}>
+            {/* O sayfa tasarlanınca buraya eklenecek, örn: <Route path="/stk-panel" element={<StkPanel />} /> */}
+          </Route>
+
+        </Route>
+
+        {/* Yanlış Linke Tıklanırsa Anasayfaya Atsın */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
+
+export default App;
