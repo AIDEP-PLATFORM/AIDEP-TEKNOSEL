@@ -1,21 +1,27 @@
-.PHONY: help dev prod down logs migrate test seed clean
+.PHONY: help dev down logs migrate test seed clean
+
 help:
-	@echo "make dev | prod | down | logs | migrate | test | seed | clean"
+	@echo "make dev | down | logs | migrate | test | seed | clean"
+
 dev:
-	@[ -f docker/.env.dev ] || cp docker/.env.dev.example docker/.env.dev
-	docker compose -f docker/docker-compose.dev.yml up --build
-prod:
-	docker compose -f docker/docker-compose.prod.yml up --build -d
+	@[ -f .env ] || cp .env.example .env
+	docker compose up --build
+
 down:
-	docker compose -f docker/docker-compose.dev.yml down
+	docker compose down
+
 logs:
-	docker compose -f docker/docker-compose.dev.yml logs -f --tail=100
+	docker compose logs -f --tail=100
+
 migrate:
-	docker compose -f docker/docker-compose.dev.yml run --rm backend alembic upgrade head
+	docker compose run --rm backend alembic upgrade head
+
 test:
-	docker compose -f docker/docker-compose.dev.yml exec backend pytest tests/ -v
+	docker compose exec backend pytest tests/ -v
+
 seed:
-	docker compose -f docker/docker-compose.dev.yml exec backend python app/data/seed_demo.py
+	docker compose exec backend python app/data/seed_demo.py
+
 clean:
 	@read -p "Tüm veriler silinecek! ENTER..." _
-	docker compose -f docker/docker-compose.dev.yml down -v --remove-orphans
+	docker compose down -v --remove-orphans

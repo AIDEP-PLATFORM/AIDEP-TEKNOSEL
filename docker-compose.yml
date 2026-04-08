@@ -1,0 +1,134 @@
+version: "3.8"
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    networks:
+      - aidep-network
+    restart: unless-stopped
+    ports:
+      - "80:80"
+
+  backend:
+    build: ./backend
+    image: aidep-backend:local
+    container_name: backend
+    networks:
+      - aidep-network
+    restart: unless-stopped
+    env_file:
+      - .env
+
+  ai:
+    build: ./ai-service
+    image: aidep-ai:local
+    container_name: ai
+    networks:
+      - aidep-network
+    restart: unless-stopped
+    env_file:
+      - .env
+
+  web:
+    build: ./frontend
+    image: aidep-web:local
+    container_name: web
+    networks:
+      - aidep-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    networks:
+      - aidep-network
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-aidep_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    networks:
+      - aidep-network
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redispassword}
+    command: redis-server --requirepass "${REDIS_PASSWORD:-redispassword}"
+    volumes:
+      - redisdata:/data
+
+  osrm:
+    image: osrm/osrm-backend
+    container_name: osrm
+    networks:
+      - aidep-network
+    restart: unless-stopped
+    volumes:
+      - ./osrm-data:/data
+    command: "osrm-routed --algorithm mld /data/turkey-latest.osrm"
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    networks:
+      - aidep-network
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-admin123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - miniodata:/data
+
+  minio-init:
+    image: minio/mc
+    container_name: minio-init
+    depends_on:
+      - minio
+    networks:
+      - aidep-network
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER:-admin} $${MINIO_ROOT_PASSWORD:-admin123};
+      /usr/bin/mc mb myminio/aidep-data --ignore-existing;
+      /usr/bin/mc anonymous set public myminio/aidep-data;
+      exit 0;
+      "
+
+  db-migrate:
+    build: ./backend
+    image: aidep-backend:local
+    container_name: db-migrate
+    command: alembic upgrade head
+    networks:
+      - aidep-network
+    restart: "no"
+    env_file:
+      - .env
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    networks:
+      - aidep-network
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    profiles:
+      - dev
+
+networks:
+  aidep-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

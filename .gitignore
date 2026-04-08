@@ -17,3 +17,8 @@ htmlcov/
 datasets/raw/
 datasets/labeled/
 runs/
+
+# Local Project Environments & Data
+.env
+osrm-data/
+
