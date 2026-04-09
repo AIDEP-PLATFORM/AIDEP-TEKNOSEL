@@ -7,8 +7,3 @@ Teknosel 2026 | OÜ2662 | Yerel Yönetimlerde Akıllı Şehircilik
 3. Greedy    → Gönüllü-talep eşleştirme        [backend/app/logic/]
 4. OSRM      → Güvenli rota hesaplama          [backend/app/services/]
 
-## Başlangıç
-```bash
-cp docker/.env.dev.example docker/.env.dev
-make dev
-```
