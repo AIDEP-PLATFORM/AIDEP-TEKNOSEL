@@ -1,12 +1,18 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+// Layout
+import MainLayout from './components/layout/MainLayout';
+
 // Sayfalarımızı içe aktarıyoruz
-import Home from './pages/Home';
 import Login from './pages/Login';
-import LiveMap from './pages/LiveMap';
-import Simulation from './pages/Simulation';
 import Unauthorized from './pages/Unauthorized';
+import DashboardPage from './pages/DashboardPage';
+import MapPage from './pages/MapPage';
+import RequestsPage from './pages/RequestsPage';
+import VolunteersPage from './pages/VolunteersPage';
+import ExercisesPage from './pages/ExercisesPage';
+import ReportsPage from './pages/ReportsPage';
 
 // Korumalı Rota (HOC) bileşenlerimiz
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -20,26 +26,31 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* KORUMALI ROTALAR (ProtectedRoute ile sarmalanmış) */}
-        {/* Sadece giriş yapanların göreceği rotalar için bir şemsiye açtık */}
+        {/* KORUMALI ROTALAR — ProtectedRoute → MainLayout → Sayfalar */}
         <Route element={<ProtectedRoute />}>
-          
-          <Route path="/" element={<Home />} />
-          <Route path="/map" element={<LiveMap />} />
+          <Route element={<MainLayout />}>
 
-          {/* Sadece spesifik ROLÜ olanların girebileceği alt rotalar */}
-          <Route element={<RoleRoute allowedRoles={['admin']} />}>
-            <Route path="/simulation" element={<Simulation />} />
-          </Route>
-          
-          {/* Diyelim ki STK sayfasına hem admin hem stk girebilir */}
-          <Route element={<RoleRoute allowedRoles={['admin', 'stk']} />}>
-            {/* O sayfa tasarlanınca buraya eklenecek, örn: <Route path="/stk-panel" element={<StkPanel />} /> */}
-          </Route>
+            {/* Herkes girebilir (giriş yapmış) */}
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/requests" element={<RequestsPage />} />
+            <Route path="/volunteers" element={<VolunteersPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
 
+            {/* Sadece admin girebilir */}
+            <Route element={<RoleRoute allowedRoles={['admin']} />}>
+              <Route path="/simulation" element={<ExercisesPage />} />
+            </Route>
+
+            {/* Admin + STK girebilir */}
+            <Route element={<RoleRoute allowedRoles={['admin', 'stk']} />}>
+              {/* İleride eklenecek: <Route path="/stk-panel" element={<StkPanel />} /> */}
+            </Route>
+
+          </Route>
         </Route>
 
-        {/* Yanlış Linke Tıklanırsa Anasayfaya Atsın */}
+        {/* Yanlış URL → Anasayfa */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
