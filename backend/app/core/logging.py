@@ -1,1 +1,0 @@
-# Uygulama log yapılandırması

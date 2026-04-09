@@ -65,4 +65,19 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 gün
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+     # --- OSRM ---
+    osrm_url: str = "http://osrm:5000"
+ 
+    # --- AI Service ---
+    ai_service_url: str = "http://ai:8001"
+ 
+    # --- MinIO ---
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+ 
+    # --- AFAD ---
+    afad_api_key: str = ""
+ 
+
 settings = Settings()
