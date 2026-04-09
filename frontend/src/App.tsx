@@ -4,8 +4,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 // Layout
 import MainLayout from './components/layout/MainLayout';
 
-// Sayfalarımızı içe aktarıyoruz
-import Login from './pages/Login';
+// Auth sayfaları
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import Unauthorized from './pages/Unauthorized';
 import DashboardPage from './pages/DashboardPage';
 import MapPage from './pages/MapPage';
@@ -23,7 +25,9 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* HERKESE AÇIK ROTALAR */}
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* KORUMALI ROTALAR — ProtectedRoute → MainLayout → Sayfalar */}
