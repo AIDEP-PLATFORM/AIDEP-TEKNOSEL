@@ -3,3 +3,6 @@
 __pycache__/
 *.pyc
 .coverage
+.env.test
+.ruff_cache/
+*.pyc

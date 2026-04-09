@@ -2,28 +2,11 @@ import redis.asyncio as aioredis
 
 from app.core.config import settings
 
-# ---------------------------------------------------------------------------
-# Redis Client — Singleton
-# ---------------------------------------------------------------------------
-# Uygulama boyunca tek bir connection pool kullanılır.
-# Her request'te yeni bağlantı açmak yerine pool'dan alır.
 
 _redis_client: aioredis.Redis | None = None
 
 
 async def get_redis_client() -> aioredis.Redis:
-    """
-    Redis client'ı döner. İlk çağrıda oluşturur, sonrakilerde aynısını verir.
-
-    Kullanım (FastAPI dependency):
-        @router.get("/")
-        async def my_route(redis: aioredis.Redis = Depends(get_redis_client)):
-            await redis.set("key", "value")
-
-    Kullanım (direkt):
-        redis = await get_redis_client()
-        await redis.ping()
-    """
     global _redis_client
 
     if _redis_client is None:
@@ -38,7 +21,6 @@ async def get_redis_client() -> aioredis.Redis:
 
 
 async def close_redis_client() -> None:
-    """Uygulama kapanırken bağlantıyı temizler (lifespan shutdown'da çağrılır)."""
     global _redis_client
 
     if _redis_client is not None:

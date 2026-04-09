@@ -10,6 +10,7 @@ from app.core.db import async_engine
 from app.core.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
