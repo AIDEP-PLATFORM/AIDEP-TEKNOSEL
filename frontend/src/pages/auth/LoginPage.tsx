@@ -9,31 +9,36 @@ import {
   Icon,
 } from '@chakra-ui/react';
 import { Shield, Mail, Lock, LogIn } from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '../../core/supabase';
 
-const Login = () => {
+const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { setAuth } = useAuthStore();
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleFakeLogin = async () => {
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError('E-posta ve şifre zorunludur.');
+      return;
+    }
     setIsLoading(true);
-    // Şimdilik fake login — ileride Firebase signInWithEmailAndPassword gelecek
-    await new Promise((r) => setTimeout(r, 800));
-    if (email === 'admin@aidep.com') {
-      setAuth({ uid: '123', email, role: 'admin' }, 'fake-jwt-token-admin');
+    setError(null);
+
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+      setError('E-posta veya şifre hatalı.');
     } else {
-      setAuth({ uid: '124', email, role: 'user' }, 'fake-jwt-token-user');
+      navigate('/');
     }
     setIsLoading(false);
-    navigate('/');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleFakeLogin();
+    if (e.key === 'Enter') handleLogin();
   };
 
   return (
@@ -71,12 +76,7 @@ const Login = () => {
               <Shield />
             </Icon>
           </Flex>
-          <Text
-            fontSize="2xl"
-            fontWeight="800"
-            color="gray.900"
-            letterSpacing="tight"
-          >
+          <Text fontSize="2xl" fontWeight="800" color="gray.900" letterSpacing="tight">
             AIDEP Giriş
           </Text>
           <Text color="gray.500" fontSize="sm" mt={1} textAlign="center">
@@ -103,7 +103,8 @@ const Login = () => {
             </Box>
             <Input
               pl={9}
-              placeholder="E-posta (örn: admin@aidep.com)"
+              placeholder="E-posta"
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               borderRadius="lg"
@@ -151,7 +152,14 @@ const Login = () => {
             />
           </Box>
 
-          {/* Submit Button */}
+          {/* Hata mesajı */}
+          {error && (
+            <Text color="red.500" fontSize="sm" w="100%">
+              {error}
+            </Text>
+          )}
+
+          {/* Submit */}
           <Button
             w="100%"
             h="44px"
@@ -161,7 +169,7 @@ const Login = () => {
             fontWeight="600"
             fontSize="sm"
             loading={isLoading}
-            onClick={handleFakeLogin}
+            onClick={handleLogin}
             _hover={{ bg: '#c53030', transform: 'translateY(-1px)', boxShadow: '0 4px 16px rgba(229,62,62,0.4)' }}
             _active={{ bg: '#9b2c2c', transform: 'translateY(0)' }}
             transition="all 0.2s"
@@ -172,13 +180,22 @@ const Login = () => {
           </Button>
         </VStack>
 
-        {/* Hint */}
-        <Text color="gray.400" fontSize="xs" textAlign="center" mt={6}>
-          Test: <strong>admin@aidep.com</strong> → Admin girişi
-        </Text>
+        {/* Alt linkler */}
+        <Flex justify="space-between" mt={6}>
+          <Link to="/forgot-password">
+            <Text color="gray.500" fontSize="xs" _hover={{ color: '#e53e3e' }}>
+              Şifremi Unuttum
+            </Text>
+          </Link>
+          <Link to="/register">
+            <Text color="gray.500" fontSize="xs" _hover={{ color: '#e53e3e' }}>
+              Kayıt Ol (STK/AFAD)
+            </Text>
+          </Link>
+        </Flex>
       </Box>
     </Box>
   );
 };
 
-export default Login;
+export default LoginPage;

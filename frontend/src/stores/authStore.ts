@@ -1,6 +1,8 @@
 import { create } from 'zustand';
+import { supabase } from '../core/supabase';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
-export type Role = 'admin' | 'stk' | 'user' | null;
+export type Role = 'admin' | 'stk' | 'afad' | 'user' | null;
 
 export interface User {
   uid: string;
@@ -10,26 +12,48 @@ export interface User {
 
 interface AuthState {
   user: User | null;
-  token: string | null;
+  session: Session | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
 
-  setAuth: (user: User, token: string) => void;
-  logout: () => void;
+  setSession: (session: Session | null) => void;
+  logout: () => Promise<void>;
+}
+
+function mapSupabaseUser(supabaseUser: SupabaseUser): User {
+  return {
+    uid: supabaseUser.id,
+    email: supabaseUser.email ?? '',
+    role: (supabaseUser.user_metadata?.role as Role) ?? 'user',
+  };
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('token') || null,
-  isAuthenticated: !!localStorage.getItem('token'),
+  session: null,
+  isAuthenticated: false,
+  isLoading: true,
 
-  setAuth: (user, token) => {
-    localStorage.setItem('token', token);
-    set({ user, token, isAuthenticated: true });
+  setSession: (session) => {
+    set({
+      session,
+      user: session?.user ? mapSupabaseUser(session.user) : null,
+      isAuthenticated: !!session,
+      isLoading: false,
+    });
   },
 
-  logout: () => {
-    // Hem tarayıcıdan hem bellekten siler, yetkileri çeker
-    localStorage.removeItem('token');
-    set({ user: null, token: null, isAuthenticated: false });
+  logout: async () => {
+    await supabase.auth.signOut();
+    set({ user: null, session: null, isAuthenticated: false });
   },
 }));
+
+// Uygulama başladığında mevcut oturumu yükle ve değişiklikleri dinle
+supabase.auth.getSession().then(({ data: { session } }) => {
+  useAuthStore.getState().setSession(session);
+});
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  useAuthStore.getState().setSession(session);
+});
