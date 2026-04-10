@@ -1,10 +1,10 @@
 # AIDEP Platform (Teknosel O2662)
 
 ## Projeye Genel Bakış
-Teknosel MVP O2662 numaralı proje için hazırlanmış ileri düzey altyapı, harita ve konteynerize edilmiş yapay zeka platformudur. Veritabanında PostGIS, coğrafi hızlandırmada OSRM ve model veri dağıtımında MinIO S3 kullanılmaktadır.
+Teknosel MVP O2662 numaralı proje için hazırlanmış ileri düzey altyapı, harita ve konteynerize edilmiş yapay zeka platformudur. Veri katmanı **Supabase** (PostGIS, barındırılan hizmet — Docker’da ayrı DB konteyneri yok), coğrafi yönlendirme **OSRM**, model depolama **MinIO S3** ile sağlanır.
 
-<<<<<<< Updated upstream
-=======
+**MVP öncelikleri ve kapsam dışı:** [docs/MVP.md](docs/MVP.md)
+
 ## Hızlı Kurulum
 
 İlgili ortam değişkenlerini hızlıca oluşturup (`.env.example` kopya) sistemi çalıştırmak için:
@@ -23,13 +23,12 @@ make dev
 | MinIO Console (S3 Arayüzü) | `http://localhost:9001/` |
 
 ## Klasör Yapısı
-- `/backend`: FastAPI mikroservisi ve PostGIS bağlantıları
+- `/backend`: FastAPI mikroservisi ve Supabase (PostGIS) bağlantıları
 - `/ai-service`: Ultralytics/XGBoost analiz motorları (Port: 8001)
 - `/frontend`: Web panel için React geliştirme ortamı (Port: 3000)
-- `/postgres`: Veritabanı `init.sql` yapılandırması
+- `/postgres`: Supabase SQL Editor’de çalıştırılacak `init.sql` (PostGIS uzantıları)
 - `/nginx`: Gelen trafikleri ayrıştıran Reverse Proxy dosyaları
-- `/secrets`: Hassas API bağlantıları (Firebase)
+- `/secrets`: İsteğe bağlı yerel gizli dosyalar (repoya eklenmez)
 
 ## Katkı Rehberi
 Lütfen commit atarken Conventional Commits kurallarına (feat/fix/chore vb.) uyunuz. Kodlarınızı PR'lamadan önce `make test` testlerini kendi lokalinizde koşarak çalıştırdığınızdan emin olunuz. PR açtığınızda GitHub CI otomatize pipeline'ı `.github/pull_request_template.md` kurallarındaki onayları varsayarak işlem başlatacaktır.
->>>>>>> Stashed changes

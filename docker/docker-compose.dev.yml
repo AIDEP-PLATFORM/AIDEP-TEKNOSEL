@@ -1,5 +1,5 @@
-version: "3.9"
-# AIDEP Geliştirme Ortamı — make dev
+# Geliştirme ortamı. DB/Supabase Docker’da değil; servisler kok .env'den okur.
+# Örnek: docker compose -f docker/docker-compose.dev.yml up
 
 services:
   nginx:
@@ -14,16 +14,15 @@ services:
   backend:
     build: {context: ../backend, dockerfile: Dockerfile}
     container_name: aidep-backend
-    env_file: .env.dev
+    env_file: ["../.env"]
     volumes:
       - ../backend:/app
       - ../ml_models:/app/ml_models:ro
     depends_on:
-      postgres: {condition: service_healthy}
-      redis:    {condition: service_healthy}
+      redis: {condition: service_healthy}
     networks: [aidep-net]
     ports: ["8000:8000"]
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   # ─── AI SERVİSİ ───────────────────────────────────────────────
   # Rapor §3.3: YOLOv8m + XGBoost ayrı servis
@@ -31,39 +30,29 @@ services:
   ai:
     build: {context: ../ai-service, dockerfile: Dockerfile}
     container_name: aidep-ai
-    env_file: .env.dev
+    env_file: ["../.env"]
     volumes:
       - ../ml_models:/models:ro   # yolov8m_aidep.pt + xgboost_priority.pkl
       - ../ai-service:/app
-    depends_on: [minio]
+    depends_on:
+      minio:
+        condition: service_healthy
     networks: [aidep-net]
     ports: ["8001:8001"]
 
   frontend:
-    build: {context: ../frontend, dockerfile: Dockerfile}
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?Set VITE_SUPABASE_URL in env for build}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?Set VITE_SUPABASE_ANON_KEY in env for build}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost/api}
+        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost/ws}
     container_name: aidep-frontend
-    env_file: .env.dev
     volumes: [../frontend/src:/app/src]
     networks: [aidep-net]
-    ports: ["3000:3000"]
-
-  postgres:
-    image: postgis/postgis:16-3.4-alpine
-    container_name: aidep-postgres
-    environment:
-      POSTGRES_USER: "${POSTGRES_USER:-aidep}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: "${POSTGRES_DB:-aidep_db}"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ../postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aidep}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks: [aidep-net]
-    ports: ["5432:5432"]
+    ports: ["3000:80"]
 
   redis:
     image: redis:7.2-alpine
@@ -84,13 +73,12 @@ services:
     command: >
       sh -c "
         if [ ! -f /data/turkey-latest.osrm ]; then
-          wget -q -O /data/turkey-latest.osm.pbf
-            https://download.geofabrik.de/europe/turkey-latest.osm.pbf &&
+          wget -q -O /data/turkey-latest.osm.pbf https://download.geofabrik.de/europe/turkey-latest.osm.pbf &&
           osrm-extract -p /opt/car.lua /data/turkey-latest.osm.pbf &&
           osrm-partition /data/turkey-latest.osrm &&
-          osrm-customize /data/turkey-latest.osrm; fi &&
-        osrm-routed --algorithm mld /data/turkey-latest.osrm
-          --port 5000 --max-table-size 1000"
+          osrm-customize /data/turkey-latest.osrm;
+        fi &&
+        osrm-routed --algorithm mld /data/turkey-latest.osrm --port 5000 --max-table-size 1000"
     ports: ["5000:5000"]
     networks: [aidep-net]
 
@@ -104,6 +92,12 @@ services:
     volumes: [miniodata:/data]
     ports: ["9001:9001"]
     networks: [aidep-net]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/9000'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   adminer:
     image: adminer:4.8.1
@@ -112,7 +106,6 @@ services:
     networks: [aidep-net]
 
 volumes:
-  pgdata:    {name: aidep_pgdata}
   osrmdata:  {name: aidep_osrmdata}
   miniodata: {name: aidep_miniodata}
 networks:

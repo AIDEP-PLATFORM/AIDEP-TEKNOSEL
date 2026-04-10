@@ -17,22 +17,34 @@ class Settings(BaseSettings): # Bu BaseSettings .env dosyasını ve sistem ortam
     ENVIRONMENT: str = "development"  # development, test, production
 
     # --- CORS ---
-    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000"] # 3000 → React frontend'in portu, 8000 → FastAPI'nin portu Yani "bu adreslerden gelen isteklere izin ver" diyorsun.
+    BACKEND_CORS_ORIGINS: list[str] = [
+        "http://localhost",
+        "http://localhost:3000",
+        "http://localhost:8000",
+    ]
 
     # --- Supabase ---
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_KEY: str = ""
 
-    # --- Veritabanı (Supabase Transaction Pooler URL) ---
+    # --- Veritabanı (Supabase: Transaction pooler veya doğrudan; Alembic için env.py 5432 kullanır) ---
     DATABASE_URL: str = ""
 
-    @property
-    def DATABASE_URL_ASYNC(self) -> str: #FastAPI istek alırken beklemez, aynı anda yüzlerce isteği işler. Bunun için asyncpg kullanıyor — asenkron çalışan bir PostgreSQL kütüphanesi.
-        return self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    def _normalized_database_url(self) -> str:
+        u = self.DATABASE_URL
+        if u.startswith("postgres://"):
+            return u.replace("postgres://", "postgresql://", 1)
+        return u
 
     @property
-    def DATABASE_URL_SYNC(self) -> str: # Alembic ise tablo oluşturup migration çalıştırırken sırayla ilerler, bekleyebilir. Bunun için psycopg2 kullanıyor — klasik senkron kütüphane.
-        return self.DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+    def DATABASE_URL_ASYNC(self) -> str:
+        u = self._normalized_database_url()
+        return u.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    @property
+    def DATABASE_URL_SYNC(self) -> str:
+        u = self._normalized_database_url()
+        return u.replace("postgresql://", "postgresql+psycopg2://", 1)
 
     # --- Redis ---
     REDIS_HOST: str = "localhost"
