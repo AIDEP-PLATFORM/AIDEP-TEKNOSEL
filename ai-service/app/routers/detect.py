@@ -18,7 +18,7 @@ async def detect(req: DetectRequest):
         img = Image.open(BytesIO(base64.b64decode(req.image_base64))).convert("RGB")
     except Exception:
         raise HTTPException(422, "Geçersiz base64 görüntü.")
-    raw = State.yolo.predict(img, req.threshold)
+    raw = await State.yolo.predict(img, req.threshold)
     cls, sev = State.yolo.dominant(raw)
     return DetectResponse(
         detections=[Detection(**d) for d in raw if d["class_name"] != "pending"],

@@ -3,15 +3,16 @@ AI Servis Pydantic Şemaları — Rapor §3.3
 """
 from pydantic import BaseModel
 
-# ── /detect — YOLOv8m 7 sınıf ────────────────────────────────
+# ── /detect — YOLOv8s 11 sınıf ───────────────────────────────
 class DetectRequest(BaseModel):
     image_base64: str
     location: dict           # {lat, lng}
     threshold: float = 0.5
 
 class Detection(BaseModel):
-    class_name: str          # road_blocked|road_passable|road_damaged|
-                             # building_collapse|building_damaged|debris_pile|clear
+    class_name: str          # bina_yikilmis|bina_cok_riskli|bina_riskli|bina_saglam|
+                             # yol_yikilmis|yol_gecilemez|yol_cok_hasarli|
+                             # yol_orta_hasarli|yol_az_hasarli|yol_gecilebilir|yol_saglam
     confidence: float        # 0-1
     bbox: list[float]        # [x1,y1,x2,y2]
 

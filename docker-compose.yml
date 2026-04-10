@@ -39,6 +39,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - YOLO_MODEL_PATH=/models/yolov8s_aidep.pt
+    volumes:
+      - ./ai-service/ml_models/yolov8s_aidep.pt:/models/yolov8s_aidep.pt:ro
 
   # Statik build; tarayıcı hosted Supabase’e gider — konteyner içinde Supabase servisi yok.
   web:
