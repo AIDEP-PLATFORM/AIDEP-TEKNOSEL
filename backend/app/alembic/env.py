@@ -13,6 +13,7 @@ if config.config_file_name:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+<<<<<<< Updated upstream
 
 alembic_url = settings.DATABASE_URL_SYNC.replace(":6543", ":5432")
 config.set_main_option("sqlalchemy.url", alembic_url)
@@ -27,6 +28,24 @@ def run_offline():
         include_object=alembic_helpers.include_object,
         render_item=alembic_helpers.render_item,
         process_revision_directives=alembic_helpers.writer,
+=======
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+def run_offline():
+    context.configure(url=settings.DATABASE_URL, target_metadata=target_metadata, literal_binds=True)
+    with context.begin_transaction():
+        context.run_migrations()
+
+def do_run(connection):
+    context.configure(connection=connection, target_metadata=target_metadata)
+    with context.begin_transaction():
+        context.run_migrations()
+
+async def run_online():
+    connectable = async_engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.", poolclass=pool.NullPool,
+>>>>>>> Stashed changes
     )
 
     with context.begin_transaction():

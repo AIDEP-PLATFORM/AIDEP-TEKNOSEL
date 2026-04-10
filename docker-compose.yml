@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   nginx:
     image: nginx:alpine
@@ -24,6 +22,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+      - MINIO_ENDPOINT=minio:9000
     secrets:
       - firebase_config
 
@@ -59,7 +61,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-aidep_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -82,17 +84,26 @@ services:
       retries: 5
 
   osrm:
-    image: osrm/osrm-backend
+    image: osrm/osrm-backend:latest
     container_name: osrm
     networks:
       - aidep-network
     restart: unless-stopped
     volumes:
-      - ./osrm-data:/data
-    command: "osrm-routed --algorithm mld /data/turkey-latest.osrm"
+      - osrmdata:/data
+    entrypoint: >
+      /bin/sh -c "
+      if [ ! -f /data/turkey-latest.osrm ]; then
+        wget -O /data/turkey-latest.osm.pbf https://download.geofabrik.de/europe/turkey-latest.osm.pbf;
+        osrm-extract -p /opt/car.lua /data/turkey-latest.osm.pbf;
+        osrm-partition /data/turkey-latest.osrm;
+        osrm-customize /data/turkey-latest.osrm;
+      fi;
+      osrm-routed --algorithm mld /data/turkey-latest.osrm --port 5000 --max-table-size 1000
+      "
 
   minio:
-    image: minio/minio
+    image: minio/minio:RELEASE.2024-01-31T20-20-33Z
     container_name: minio
     networks:
       - aidep-network
@@ -115,8 +126,9 @@ services:
       /bin/sh -c "
       sleep 5;
       /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ACCESS_KEY:-admin} $${MINIO_SECRET_KEY:-admin123};
-      /usr/bin/mc mb myminio/aidep-data --ignore-existing;
-      /usr/bin/mc anonymous set public myminio/aidep-data;
+      /usr/bin/mc mb --ignore-existing myminio/aidep-photos;
+      /usr/bin/mc mb --ignore-existing myminio/aidep-models;
+      /usr/bin/mc mb --ignore-existing myminio/aidep-reports;
       exit 0;
       "
 
@@ -130,6 +142,9 @@ services:
     restart: "no"
     env_file:
       - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
 
   adminer:
     image: adminer
@@ -150,6 +165,7 @@ volumes:
   pgdata:
   redisdata:
   miniodata:
+  osrmdata:
 
 secrets:
   firebase_config:

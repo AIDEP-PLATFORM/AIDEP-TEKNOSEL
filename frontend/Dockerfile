@@ -1,11 +1,11 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine as builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --silent
+RUN npm install
 COPY . .
 RUN npm run build
-FROM nginx:1.25-alpine
+
+FROM nginx:1.25-alpine as runtime
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 3000
-CMD ["nginx","-g","daemon off;"]
+CMD ["nginx", "-g", "daemon off;"]
