@@ -51,7 +51,11 @@ services:
         VITE_WS_URL: ${VITE_WS_URL:-ws://localhost/ws}
     container_name: aidep-frontend
     volumes: [../frontend/src:/app/src]
-    networks: [aidep-net]
+    networks:
+      aidep-net:
+        aliases:
+          # nginx.conf kök compose ile aynı; upstream adı "web"
+          - web
     ports: ["3000:80"]
 
   redis:
@@ -67,12 +71,15 @@ services:
 
   # OSRM — Türkiye haritası, ilk başlatmada ~15 dk (Issue DOC-007)
   osrm:
-    image: osrm/osrm-backend:v5.27.1
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
     container_name: aidep-osrm
     volumes: [osrmdata:/data]
     command: >
       sh -c "
         if [ ! -f /data/turkey-latest.osrm ]; then
+          if ! command -v wget >/dev/null 2>&1; then
+            apt-get update -qq && apt-get install -y -qq --no-install-recommends wget ca-certificates;
+          fi &&
           wget -q -O /data/turkey-latest.osm.pbf https://download.geofabrik.de/europe/turkey-latest.osm.pbf &&
           osrm-extract -p /opt/car.lua /data/turkey-latest.osm.pbf &&
           osrm-partition /data/turkey-latest.osrm &&

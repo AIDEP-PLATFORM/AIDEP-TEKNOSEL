@@ -74,7 +74,7 @@ services:
       retries: 5
 
   osrm:
-    image: osrm/osrm-backend:v5.27.1
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
     container_name: osrm
     networks:
       - aidep-network
@@ -84,11 +84,14 @@ services:
     entrypoint: >
       /bin/sh -c "
       if [ ! -f /data/turkey-latest.osrm ]; then
-        wget -O /data/turkey-latest.osm.pbf https://download.geofabrik.de/europe/turkey-latest.osm.pbf;
-        osrm-extract -p /opt/car.lua /data/turkey-latest.osm.pbf;
-        osrm-partition /data/turkey-latest.osrm;
+        if ! command -v wget >/dev/null 2>&1; then
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends wget ca-certificates;
+        fi &&
+        wget -O /data/turkey-latest.osm.pbf https://download.geofabrik.de/europe/turkey-latest.osm.pbf &&
+        osrm-extract -p /opt/car.lua /data/turkey-latest.osm.pbf &&
+        osrm-partition /data/turkey-latest.osrm &&
         osrm-customize /data/turkey-latest.osrm;
-      fi;
+      fi &&
       osrm-routed --algorithm mld /data/turkey-latest.osrm --port 5000 --max-table-size 1000
       "
 
