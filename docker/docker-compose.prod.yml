@@ -1,3 +1,6 @@
-version: '3.9'
-# TODO: Issue DOC-001
-services: {}
+# Production stack: root compose ile aynı servisler.
+# Depo kökünden:
+#   docker compose -f docker/docker-compose.prod.yml up -d
+# İlk dosya docker/ altında olduğu için include yolları bu dosyaya göre çözülür.
+include:
+  - path: ../docker-compose.yml

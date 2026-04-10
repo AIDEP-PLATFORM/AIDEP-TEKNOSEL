@@ -5,6 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from app.api.router import api_router
+from app.api.routes import websocket as websocket_routes
 from app.core.config import settings
 from app.core.db import async_engine
 from app.core.redis import get_redis_client
@@ -35,6 +37,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(websocket_routes.router, prefix="/ws", tags=["websocket"])
 
 
 @app.get("/health", tags=["health"])

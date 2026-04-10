@@ -23,3 +23,7 @@ osrm-data/
 # Secrets and Models
 secrets/
 ml_models/
+
+# Cursor/Claude çalışma ağaçları ve gömülü repolar — repoya eklenmez
+.claude/
+AIDEP_yolov8/

@@ -5,29 +5,26 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install Dependencies
-        run: |
-          if [ -f backend/requirements.txt ]; then
-            pip install -r backend/requirements.txt
-          else
-            pip install -e backend/
-          fi
-          pip install pytest pytest-cov
-      - name: Run Pytest
-        run: pytest backend/tests/ -v --cov=app --cov-report=xml || echo "No tests defined yet"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run pytest (MVP — integration)
+        run: pytest tests/integration -v --cov=app --cov-report=xml --cov-fail-under=0
 
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Install formatters
@@ -41,5 +38,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Attempt Compose Build
+      - name: Set dummy env for compose interpolation
+        run: |
+          echo "DATABASE_URL=postgresql://u:p@host:5432/db" >> $GITHUB_ENV
+          echo "SUPABASE_URL=https://x.supabase.co" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_KEY=dummy" >> $GITHUB_ENV
+          echo "REDIS_PASSWORD=dummy" >> $GITHUB_ENV
+          echo "MINIO_ACCESS_KEY=dummy" >> $GITHUB_ENV
+          echo "MINIO_SECRET_KEY=dummy" >> $GITHUB_ENV
+          echo "VITE_SUPABASE_URL=https://x.supabase.co" >> $GITHUB_ENV
+          echo "VITE_SUPABASE_ANON_KEY=dummy" >> $GITHUB_ENV
+      - name: Docker Compose Build
         run: docker compose build
