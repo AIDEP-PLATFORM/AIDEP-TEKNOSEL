@@ -1,5 +1,5 @@
-"""AIDEP AI Servisi — YOLOv8m + XGBoost Inference"""
-import os
+"""AIDEP AI Servisi — YOLOv8s + XGBoost Inference"""
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.models.yolo_model import YOLOModel
@@ -14,15 +14,18 @@ class State:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    State.yolo = YOLOModel(YOLO_PATH)
-    State.xgb  = XGBoostModel(XGBOOST_PATH)
+    # Model yükleme I/O-bound (disk okuma) → ikisi paralel başlatılır
+    State.yolo, State.xgb = await asyncio.gather(
+        asyncio.to_thread(YOLOModel, YOLO_PATH),
+        asyncio.to_thread(XGBoostModel, XGBOOST_PATH),
+    )
     yield
 
 
 app = FastAPI(
     title="AIDEP AI Servisi",
     version="1.0.0",
-    description="YOLOv8m hasar tespiti + XGBoost önceliklendirme | Teknosel 2026",
+    description="YOLOv8s hasar tespiti + XGBoost önceliklendirme | Teknosel 2026",
     lifespan=lifespan,
 )
 

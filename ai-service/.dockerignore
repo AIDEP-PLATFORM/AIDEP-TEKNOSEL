@@ -5,3 +5,7 @@ venv/
 .venv/
 .env
 .git
+ml_models/
+training/
+tests/
+README.md
