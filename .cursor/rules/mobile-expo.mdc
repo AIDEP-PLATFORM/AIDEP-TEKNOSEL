@@ -1,0 +1,11 @@
+---
+description: Expo / React Native (mobile) — TypeScript
+globs: "mobile/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Mobile (Expo) standartları
+
+- Mevcut `App.tsx` ve klasör düzenine uy; platforma özel kod gerekiyorsa `Platform` veya `.android` / `.ios` soneklerini projedeki örneklere göre kullan.
+- Tip güvenliği: mümkün olduğunca açık tipler; `any` son çare.
+- Genel depo kuralları (`genel-standartlar`): odaklı değişiklik, kod İngilizce, kullanıcı metinleri ürün diline uygun.

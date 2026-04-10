@@ -1,0 +1,31 @@
+---
+description: AIDEP genel dosya ve kod ilkeleri (tüm depo)
+alwaysApply: true
+---
+
+# Genel standartlar
+
+## Kapsam ve değişiklik disiplini
+
+- İstekle ilgili olmayan dosyalara dokunma; “yan yoldan” refactor veya geniş kapsamlı format temizliği yapma.
+- Aynı PR/commit içinde birden fazla alakasız konuyu birleştirme.
+
+## Dil ve isimlendirme
+
+- Kod: sınıf, fonksiyon, değişken ve modül adları **İngilizce**; tutarlı bir terim sözlüğü kullan.
+- Kullanıcıya dönük metinler (UI, hata mesajları, dokümantasyon) projede **Türkçe** tercih edildiği sürece mevcut ürün diline uy.
+- Yorumlar: karmaşık iş kuralını açıklıyorsa Türkçe veya İngilizce tutarlı olsun; gereksiz yorum ekleme.
+
+## Monorepo yerleşimi (özet)
+
+- `backend/app/` — API, `schemas`, `crud`, `services`, `logic` katmanlarına uy; yeni özellik var olan klasör sözleşmesine girsin.
+- `frontend/` — Biome ile format/lint; yapılandırmayı ihlal etme.
+- `ai-service/`, `mobile/` — kendi `README` / `pyproject` / araç zincirine uy.
+
+## Docker ve yapılandırma
+
+- `docker-compose`, `nginx` vb. değişikliklerde üretim ve geliştirme ortamı ayrımını koru; gizli anahtarları repoya koyma.
+
+## Test ve kalite
+
+- Mümkünse ilgili pakette lint/test komutlarını çalıştır; yeni davranış için en azından etkilenen modülü doğrula.

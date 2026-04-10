@@ -1,0 +1,32 @@
+---
+description: Python (backend ve ai-service) — Black, Ruff, FastAPI
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Python standartları
+
+## Araçlar
+
+- `backend/`: `pyproject.toml` içindeki **Black** (satır uzunluğu **100**) ve **Ruff** kurallarına uy; import sırası Ruff isort ile uyumlu olsun.
+- `ai-service/`: aynı dosyada tanımlı araçlar varsa onlara uy; yoksa backend ile aynı stil (100 sütun, tip ipuçları, açık isimler).
+
+## Backend mimarisi (`backend/app/`)
+
+- HTTP ve DI: `app/api/`
+- Pydantic modeller: `app/schemas/`
+- Veritabanı erişimi: `app/crud/`
+- Dış sistemler: `app/services/`
+- İş kuralları (AI’dan bağımsız): `app/logic/`
+
+Yeni endpoint: route → schema → crud/service sırasını bozma; iş mantığını API katmanına şişirmeden uygun katmana koy.
+
+## Kod stili
+
+- `requires-python >= 3.11` ile uyumlu sözdizimi; mümkün olduğunca tip notları kullan.
+- Güvenlik / Bandit uyarıları: `pyproject` içindeki `per-file-ignores` dışında bastırma; gerekçeli istisna ekle.
+- Üretim kodunda `print` yerine yapılandırılmış loglama (projede hangi logger kullanılıyorsa ona uy).
+
+## Test ve async
+
+- Async endpoint’lerde blocking I/O kullanma; DB ve HTTP için projedeki async kalıplarını takip et.

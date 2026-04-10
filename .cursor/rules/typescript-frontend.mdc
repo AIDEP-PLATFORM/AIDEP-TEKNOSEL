@@ -1,0 +1,21 @@
+---
+description: TypeScript/React frontend — Biome
+globs: "frontend/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Frontend (TypeScript / React) standartları
+
+## Biome
+
+- `frontend/biome.json` geçerli: **formatter ve linter açık**, önerilen kurallar, **2 boşluk** girinti.
+- Yeni kod Biome ile uyumlu olsun; mümkünse `biome check` / format komutlarını kullan.
+
+## Kod organizasyonu
+
+- Bileşenler: tek sorumluluk; ortak mantık için hook veya küçük yardımcı modüller.
+- Tipler: `any` kaçın; API yanıtları için paylaşılan tipler / şema üretimi varsa onu kullan.
+
+## Stil
+
+- Mevcut import sırası ve dosya yapısına uy; gereksiz yeniden düzenleme yapma.

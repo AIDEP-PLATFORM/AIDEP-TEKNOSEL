@@ -119,3 +119,6 @@ omit = [
 show_missing = true
 skip_covered = false
 fail_under = 70
+
+[tool.setuptools]
+packages = ["app"]
