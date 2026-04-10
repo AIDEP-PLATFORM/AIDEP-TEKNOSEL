@@ -1,37 +1,57 @@
-import asyncio
+# alembic upgrade head çalıştırınca ilk bu dosya çalışır. Veritabanına nasıl bağlanılacağını ve migration'ların nasıl işletileceğini ayarlar.
 from logging.config import fileConfig
+from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
+from geoalchemy2 import alembic_helpers
 from app.core.config import settings
-from app.models import Base  # noqa
+from app.models import Base
 
 config = context.config
+
 if config.config_file_name:
     fileConfig(config.config_file_name)
+
 target_metadata = Base.metadata
-config.set_main_option("sqlalchemy.url", settings.database_url)
+
+alembic_url = settings.DATABASE_URL_SYNC.replace(":6543", ":5432")
+config.set_main_option("sqlalchemy.url", alembic_url)
 
 def run_offline():
-    context.configure(url=settings.database_url, target_metadata=target_metadata, literal_binds=True)
-    with context.begin_transaction():
-        context.run_migrations()
-
-def do_run(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
-    with context.begin_transaction():
-        context.run_migrations()
-
-async def run_online():
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.", poolclass=pool.NullPool,
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+        include_object=alembic_helpers.include_object,
+        render_item=alembic_helpers.render_item,
+        process_revision_directives=alembic_helpers.writer,
     )
-    async with connectable.connect() as conn:
-        await conn.run_sync(do_run)
-    await connectable.dispose()
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+def run_online():
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=alembic_helpers.include_object,
+            render_item=alembic_helpers.render_item,
+            process_revision_directives=alembic_helpers.writer,
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
 
 if context.is_offline_mode():
     run_offline()
 else:
-    asyncio.run(run_online())
+    run_online()
