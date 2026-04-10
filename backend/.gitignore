@@ -1,8 +1,7 @@
-.env
+.env.test
 .venv/
 __pycache__/
 *.pyc
 .coverage
-.env.test
 .ruff_cache/
-*.pyc
+*.egg-info/

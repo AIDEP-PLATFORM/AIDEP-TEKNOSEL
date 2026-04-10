@@ -18,7 +18,12 @@ osrm-data/
 
 # Environments (NEVER COMMIT)
 .env
+**/.env
 .env.local
+
+# Local tooling / embedded clones (do not commit)
+.claude/
+AIDEP_yolov8/
 
 # Secrets and Models
 secrets/
