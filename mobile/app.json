@@ -1,1 +1,44 @@
-{"expo":{"name":"AIDEP","slug":"aidep-mobile","version":"1.0.0","scheme":"aidep","plugins":["expo-location","expo-image-picker"]}}
+{
+  "expo": {
+    "name": "AIDEP",
+    "slug": "aidep-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "aidep",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aidep.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.aidep.mobile",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-location",
+      "expo-image-picker"
+    ],
+    "extra": {
+      "apiUrl": "http://10.0.2.2:8000"
+    }
+  }
+}

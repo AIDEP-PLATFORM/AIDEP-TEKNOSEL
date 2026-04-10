@@ -1,1 +1,2 @@
-// Firebase — Issue MOB-006
+// TODO: implement
+export {};

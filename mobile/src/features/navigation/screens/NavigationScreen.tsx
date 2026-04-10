@@ -1,4 +1,3 @@
-// TODO: MOB-017
-import React from 'react'
-import { View, Text } from 'react-native'
-export default function NavigationScreen() { return <View><Text>NavigationScreen</Text></View> }
+import React from 'react';
+import { View } from 'react-native';
+export default function Stub() { return <View />; }
