@@ -56,5 +56,6 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     city: Optional[str] = None
     phone: Optional[str] = None
+    tc_no: Optional[str] = None
     organization: Optional[str] = None
     is_active: Optional[bool] = None
