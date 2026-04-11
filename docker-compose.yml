@@ -53,6 +53,8 @@ services:
       - DATABASE_URL=postgresql://aidep:aidep_pass@postgres:5432/aidep
 
   ai:
+    profiles:
+      - ai                    # Varsayılan "up"'ta çalışmaz. Açmak için: --profile ai
     build: ./ai-service
     image: aidep-ai:local
     container_name: ai
