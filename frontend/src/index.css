@@ -1,1 +1,99 @@
 @import "tailwindcss";
+
+/* ── Custom Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #060d1f; }
+::-webkit-scrollbar-thumb { background: #1a2f50; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #2d5a8e; }
+
+/* ── Global ───────────────────────────────────────────────────────────── */
+html { scroll-behavior: smooth; }
+body { background: #060d1f; font-family: 'Inter', system-ui, sans-serif; }
+
+/* ── Keyframe Animations ──────────────────────────────────────────────── */
+@keyframes pulse-glow-red {
+  0%, 100% { box-shadow: 0 0 6px rgba(229, 62, 62, 0.4); }
+  50%       { box-shadow: 0 0 22px rgba(229, 62, 62, 0.9), 0 0 40px rgba(229, 62, 62, 0.3); }
+}
+
+@keyframes pulse-glow-green {
+  0%, 100% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.4); }
+  50%       { box-shadow: 0 0 18px rgba(16, 185, 129, 0.8), 0 0 32px rgba(16, 185, 129, 0.2); }
+}
+
+@keyframes live-blink {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%       { opacity: 0.4; transform: scale(0.75); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes float-up-down {
+  0%, 100% { transform: translateY(0px);  }
+  50%       { transform: translateY(-5px); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes grid-move {
+  0%   { background-position: 0 0;       }
+  100% { background-position: 40px 40px; }
+}
+
+/* ── Utility Classes ──────────────────────────────────────────────────── */
+.glow-red   { animation: pulse-glow-red   2s ease-in-out infinite; }
+.glow-green { animation: pulse-glow-green 2s ease-in-out infinite; }
+.live-dot   { animation: live-blink       1.4s ease-in-out infinite; }
+.floating   { animation: float-up-down    3.2s ease-in-out infinite; }
+.fade-up    { animation: fade-up          0.4s ease-out both; }
+
+/* Command-center grid texture on main content */
+.cmd-bg {
+  background-color: #060d1f;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.024) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Glassmorphism helper */
+.glass {
+  background: rgba(13, 27, 53, 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Shimmer text */
+.shimmer-text {
+  background: linear-gradient(90deg, #e53e3e 0%, #f6a623 40%, #e53e3e 80%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Nav active glow bar */
+.nav-glow-bar {
+  animation: pulse-glow-red 2s ease-in-out infinite;
+}
+
+/* Focus ring override */
+*:focus-visible { outline: 2px solid rgba(229, 62, 62, 0.6); outline-offset: 2px; }
