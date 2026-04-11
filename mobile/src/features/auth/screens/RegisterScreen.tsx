@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import colors from '../../../shared/theme/colors';
 import Icon from '../../../shared/components/Icon';
+import { authService } from '../services/auth.service';
 
 const roleConfig: Record<string, {
   title: string;
@@ -70,7 +71,7 @@ const RegisterScreen = () => {
     setForm(prev => ({ ...prev, [field]: finalValue }));
   };
 
-  const handleDevam = () => {
+  const handleDevam = async () => {
     const { adSoyad, telefon, email, tc, adres, sifre, sifreTekrar } = form;
 
     if (!adSoyad || !telefon || !email || !tc || !adres || !sifre || !sifreTekrar) {
@@ -100,6 +101,17 @@ const RegisterScreen = () => {
 
     if (sifre !== sifreTekrar) {
       Alert.alert('Hata', 'Şifreler birbiriyle eşleşmiyor. Lütfen kontrol ediniz.'); return;
+    }
+
+    const err = await authService.register(email, sifre, {
+      full_name: adSoyad,
+      phone: `${countryCode.code}${telefon}`,
+      city: adres,
+    });
+
+    if (err) {
+      Alert.alert('Kayıt Hatası', err);
+      return;
     }
 
     if (role === 'normal') {
