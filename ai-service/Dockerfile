@@ -13,7 +13,8 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
         "pillow>=10.2.0" \
         "numpy>=1.26.4" \
         "opencv-python-headless>=4.9.0.80" \
-        "joblib>=1.3.2"
+        "joblib>=1.3.2" \
+        "minio>=7.2.5"
 
 FROM python:3.11-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
