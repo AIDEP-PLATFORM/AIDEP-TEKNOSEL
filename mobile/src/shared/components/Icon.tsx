@@ -84,6 +84,27 @@ const icons = {
   shield: (color: string, sw: number) => (
     <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" fill="none" />
   ),
+  camera: (color: string, sw: number) => (
+    <G>
+      <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke={color} strokeWidth={sw} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx="12" cy="13" r="4" stroke={color} strokeWidth={sw} fill="none" />
+    </G>
+  ),
+  image: (color: string, sw: number) => (
+    <G>
+      <Path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z" stroke={color} strokeWidth={sw} fill="none" strokeLinecap="round" />
+      <Circle cx="8.5" cy="8.5" r="1.5" stroke={color} strokeWidth={sw} fill="none" />
+      <Path d="M21 15l-5-5L5 21" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </G>
+  ),
+  users: (color: string, sw: number) => (
+    <G>
+      <Path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke={color} strokeWidth={sw} strokeLinecap="round" fill="none" />
+      <Circle cx="9" cy="7" r="4" stroke={color} strokeWidth={sw} fill="none" />
+      <Path d="M23 21v-2a4 4 0 00-3-3.87" stroke={color} strokeWidth={sw} strokeLinecap="round" fill="none" />
+      <Path d="M16 3.13a4 4 0 010 7.75" stroke={color} strokeWidth={sw} strokeLinecap="round" fill="none" />
+    </G>
+  ),
 };
 
 const Icon = ({ name, size = 24, color = '#0A2540', strokeWidth = 2 }: IconProps) => {

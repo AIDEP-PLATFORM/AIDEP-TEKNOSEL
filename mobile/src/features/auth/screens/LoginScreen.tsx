@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import colors from '../../../shared/theme/colors';
 import Icon from '../../../shared/components/Icon';
+import { useAuthStore } from '../../../core/stores/auth.store';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,18 +26,24 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const navigation = useNavigation<any>();
+  const { login, loading } = useAuthStore();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    setErrorMsg('');
     if (!email || !password) {
-      Alert.alert('Hata', 'E-posta ve şifre alanları boş bırakılamaz.');
+      setErrorMsg('E-posta ve şifre alanları boş bırakılamaz.');
       return;
     }
     if (!email.includes('@')) {
-      Alert.alert('Hata', 'Geçerli bir e-posta adresi giriniz.');
+      setErrorMsg('Geçerli bir e-posta adresi giriniz.');
       return;
     }
-    Alert.alert('Hata', 'E-posta adresi veya şifre yanlış.');
+    const err = await login(email, password);
+    if (err) {
+      setErrorMsg('E-posta adresi veya şifre yanlış.');
+    }
   };
 
   return (
@@ -158,18 +165,28 @@ const LoginScreen = () => {
             <Text style={styles.forgotPasswordText}>Şifremi Unuttum?</Text>
           </TouchableOpacity>
 
+          {/* Hata mesajı */}
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <Icon name="alertTriangle" size={15} color={colors.emergency} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
+
           {/* Login button with gradient */}
-          <TouchableOpacity onPress={handleLogin} activeOpacity={0.85}>
+          <TouchableOpacity onPress={handleLogin} activeOpacity={0.85} disabled={loading}>
             <LinearGradient
               colors={['#1565C0', '#1976D2', '#42A5F5']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={styles.loginButton}
+              style={[styles.loginButton, loading && { opacity: 0.7 }]}
             >
-              <Text style={styles.loginButtonText}>Giriş Yap</Text>
-              <View style={styles.loginButtonArrow}>
-                <Icon name="chevronRight" size={18} color={colors.white} />
-              </View>
+              <Text style={styles.loginButtonText}>{loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}</Text>
+              {!loading && (
+                <View style={styles.loginButtonArrow}>
+                  <Icon name="chevronRight" size={18} color={colors.white} />
+                </View>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
@@ -405,6 +422,23 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginBottom: 20,
     marginTop: 2,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: '#FFF5F5',
+    borderWidth: 1,
+    borderColor: '#FED7D7',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: {
+    flex: 1,
+    color: colors.emergency,
+    fontSize: 13,
+    fontWeight: '500',
   },
   forgotPasswordText: {
     color: colors.info,
