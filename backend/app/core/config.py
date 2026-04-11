@@ -73,6 +73,14 @@ class Settings(BaseSettings): # Bu BaseSettings .env dosyasını ve sistem ortam
     # --- Supabase Storage ---
     supabase_storage_bucket: str = "damage-photos"
 
+    # --- MinIO ---
+    MINIO_ENDPOINT: str = "minio:9000"        # Docker içinde minio:9000, dışarıdan localhost:9000
+    MINIO_ACCESS_KEY: str = "aidep_minio"     # MinIO root kullanıcı (login için)
+    MINIO_SECRET_KEY: str = ""                # MinIO root şifre
+    MINIO_API_ACCESS_KEY: str = ""            # Programatik erişim key'i
+    MINIO_API_SECRET_KEY: str = ""            # Programatik erişim secret'ı
+    MINIO_BUCKET_PHOTOS: str = "aidep-photos" # Hasar fotoğrafları bucket'ı
+
     # --- AFAD ---
     afad_api_key: str = ""
 
