@@ -109,6 +109,9 @@ services:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY must be set in .env}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY must be set in .env}
     command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - miniodata:/data
     # MinIO imajında curl yok; 9000 portu dinlenene kadar TCP ile kontrol
