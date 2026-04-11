@@ -1,34 +1,28 @@
 import React, { useState } from 'react';
 import {
-  Flex,
-  Box,
-  Text,
-  IconButton,
-  HStack,
-  Avatar,
-  Badge,
-  Menu,
+  Flex, Box, Text, IconButton, HStack, Avatar, Badge, Menu,
 } from '@chakra-ui/react';
 import { ChevronRight, Bell, User, LogOut, Settings } from 'lucide-react';
 import { useLocation, Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { motion } from 'framer-motion';
 
 const routeNames: Record<string, string> = {
-  '': 'Dashboard',
-  'map': 'Canlı Harita',
-  'requests': 'Talepler',
+  '':           'Dashboard',
+  'map':        'Canlı Harita',
+  'requests':   'Talepler',
   'volunteers': 'Gönüllüler',
   'simulation': 'Tatbikatlar',
-  'reports': 'Raporlar',
+  'reports':    'Raporlar',
 };
 
 const TopBar: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const location  = useLocation();
+  const navigate  = useNavigate();
   const { user, logout } = useAuthStore();
   const [unreadNotifications] = useState(3);
 
-  // TODO: WEB-007 (WebSocket hook bağlandığında buraya entegre edilecek)
+  // TODO: WEB-007 – WebSocket hook entegre edilecek
   const isConnected = true;
 
   const pathnames = location.pathname.split('/').filter((x) => x);
@@ -46,39 +40,55 @@ const TopBar: React.FC = () => {
       alignItems="center"
       justifyContent="space-between"
       px={6}
-      bg="white"
-      borderBottomWidth="1px"
-      borderColor="gray.200"
-      shadow="sm"
       position="sticky"
       top={0}
       zIndex={10}
       flexShrink={0}
-      _dark={{ bg: 'gray.800', borderColor: 'gray.700' }}
+      style={{
+        background: 'rgba(6, 13, 31, 0.75)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+      }}
     >
-      {/* Breadcrumb */}
+      {/* ── Breadcrumb ──────────────────────────────────────────────── */}
       <HStack gap={2} align="center">
         <RouterLink to="/" style={{ textDecoration: 'none' }}>
-          <Text fontSize="sm" fontWeight="500" color="gray.600" _hover={{ color: '#e53e3e' }} _dark={{ color: 'gray.400' }}>
-            Ana Sayfa
-          </Text>
+          <motion.div whileHover={{ color: '#ff5555' }}>
+            <Text
+              fontSize="sm"
+              fontWeight="500"
+              color="whiteAlpha.600"
+              transition="color 0.2s"
+              _hover={{ color: '#ff5555' }}
+            >
+              Ana Sayfa
+            </Text>
+          </motion.div>
         </RouterLink>
 
         {pathnames.map((value, index) => {
-          const last = index === pathnames.length - 1;
-          const to = `/${pathnames.slice(0, index + 1).join('/')}`;
+          const last  = index === pathnames.length - 1;
+          const to    = `/${pathnames.slice(0, index + 1).join('/')}`;
           const title = routeNames[value] || value.charAt(0).toUpperCase() + value.slice(1);
 
           return (
             <HStack key={to} gap={2}>
-              <ChevronRight size={14} color="gray" />
+              <ChevronRight size={13} color="rgba(255,255,255,0.25)" />
               {last ? (
-                <Text fontSize="sm" fontWeight="600" color="gray.900" _dark={{ color: 'white' }}>
+                <Text fontSize="sm" fontWeight="700" color="white">
                   {title}
                 </Text>
               ) : (
                 <RouterLink to={to} style={{ textDecoration: 'none' }}>
-                  <Text fontSize="sm" fontWeight="500" color="gray.600" _hover={{ color: '#e53e3e' }}>
+                  <Text
+                    fontSize="sm"
+                    fontWeight="500"
+                    color="whiteAlpha.600"
+                    _hover={{ color: '#ff5555' }}
+                    transition="color 0.2s"
+                  >
                     {title}
                   </Text>
                 </RouterLink>
@@ -88,117 +98,182 @@ const TopBar: React.FC = () => {
         })}
       </HStack>
 
-      {/* Right Side */}
-      <HStack gap={4}>
+      {/* ── Right Controls ──────────────────────────────────────────── */}
+      <HStack gap={3}>
 
         {/* Connection Status */}
-        <Flex
-          alignItems="center"
-          bg={isConnected ? '#e5f6eb' : '#ffe5e5'}
-          px={3}
-          py={1.5}
-          borderRadius="full"
-          gap={2}
-          display={{ base: 'none', sm: 'flex' }}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3 }}
         >
-          <Box
-            w="8px"
-            h="8px"
+          <Flex
+            alignItems="center"
+            px={3}
+            py="6px"
             borderRadius="full"
-            bg={isConnected ? '#38a169' : '#e53e3e'}
-            boxShadow={isConnected ? '0 0 8px #38a169' : '0 0 8px #e53e3e'}
-          />
-          <Text fontSize="xs" fontWeight="bold" color={isConnected ? '#2b7d51' : '#b42727'}>
-            {isConnected ? 'CANLI' : 'BAĞLANTI YOK'}
-          </Text>
-        </Flex>
-
-        {/* Notifications */}
-        <Box position="relative">
-          <IconButton
-            aria-label="Bildirimler"
-            variant="ghost"
-            color="gray.600"
-            borderRadius="full"
-            _hover={{ bg: 'gray.100', color: '#e53e3e' }}
-            _dark={{ color: 'gray.300', _hover: { bg: 'gray.700' } }}
+            gap={2}
+            display={{ base: 'none', sm: 'flex' }}
+            style={{
+              background: isConnected ? 'rgba(16,185,129,0.1)' : 'rgba(229,62,62,0.1)',
+              border: `1px solid ${isConnected ? 'rgba(16,185,129,0.25)' : 'rgba(229,62,62,0.25)'}`,
+            }}
           >
-            <Bell size={20} />
-          </IconButton>
-          {unreadNotifications > 0 && (
-            <Badge
-              position="absolute"
-              top={0}
-              right={0}
-              bg="#e53e3e"
-              color="white"
+            <Box
+              w="8px"
+              h="8px"
               borderRadius="full"
-              fontSize="0.6em"
-              px={1.5}
-              transform="translate(25%, -25%)"
-              border="2px solid white"
-              minW="18px"
-              textAlign="center"
+              flexShrink={0}
+              bg={isConnected ? '#10b981' : '#e53e3e'}
+              className={isConnected ? 'glow-green live-dot' : 'glow-red live-dot'}
+            />
+            <Text
+              fontSize="11px"
+              fontWeight="700"
+              letterSpacing="wider"
+              color={isConnected ? '#34d399' : '#ff7777'}
             >
-              {unreadNotifications}
-            </Badge>
+              {isConnected ? 'CANLI' : 'BAĞLANTI YOK'}
+            </Text>
+          </Flex>
+        </motion.div>
+
+        {/* Notification Bell */}
+        <Box position="relative">
+          <motion.div
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.92 }}
+            animate={unreadNotifications > 0 ? {
+              rotate: [0, -10, 10, -8, 8, -4, 4, 0],
+              transition: { delay: 1.5, duration: 0.6, repeat: Infinity, repeatDelay: 6 },
+            } : {}}
+          >
+            <IconButton
+              aria-label="Bildirimler"
+              variant="ghost"
+              borderRadius="full"
+              color="whiteAlpha.600"
+              _hover={{ bg: 'rgba(255,255,255,0.07)', color: 'white' }}
+            >
+              <Bell size={19} />
+            </IconButton>
+          </motion.div>
+
+          {unreadNotifications > 0 && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 20, delay: 0.4 }}
+              style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                pointerEvents: 'none',
+              }}
+            >
+              <Badge
+                bg="#e53e3e"
+                color="white"
+                borderRadius="full"
+                fontSize="0.6em"
+                px={1.5}
+                border="2px solid rgba(6,13,31,0.9)"
+                minW="17px"
+                textAlign="center"
+                boxShadow="0 0 8px rgba(229,62,62,0.6)"
+              >
+                {unreadNotifications}
+              </Badge>
+            </motion.div>
           )}
         </Box>
 
         {/* User Menu */}
         <Menu.Root>
           <Menu.Trigger asChild>
-            <Flex
-              align="center"
-              cursor="pointer"
-              borderRadius="full"
-              p={1}
-              gap={2}
-              _hover={{ bg: 'gray.100' }}
-              _dark={{ _hover: { bg: 'gray.700' } }}
-              transition="background 0.2s"
-            >
-              <Avatar.Root size="sm" bg="#4299e1" color="white">
-                <Avatar.Fallback>
-                  {user?.email?.[0]?.toUpperCase() || 'U'}
-                </Avatar.Fallback>
-              </Avatar.Root>
-              <Box display={{ base: 'none', md: 'block' }} textAlign="left">
-                <Text fontSize="sm" fontWeight="bold" lineHeight="1" color="gray.800" _dark={{ color: 'white' }}>
-                  {user?.email || 'Kullanıcı'}
-                </Text>
-                <Text fontSize="xs" color="gray.500" mt={0.5}>
-                  {user?.role?.toUpperCase() || 'Misafir'}
-                </Text>
-              </Box>
-            </Flex>
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+              <Flex
+                align="center"
+                cursor="pointer"
+                borderRadius="full"
+                p={1}
+                pr={3}
+                gap={2}
+                border="1px solid rgba(255,255,255,0.08)"
+                bg="rgba(255,255,255,0.04)"
+                _hover={{ bg: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.14)' }}
+                transition="all 0.2s"
+              >
+                <Avatar.Root
+                  size="sm"
+                  style={{
+                    background: 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)',
+                    boxShadow: '0 0 12px rgba(229,62,62,0.4)',
+                  }}
+                  color="white"
+                >
+                  <Avatar.Fallback>
+                    {user?.email?.[0]?.toUpperCase() || 'U'}
+                  </Avatar.Fallback>
+                </Avatar.Root>
+                <Box display={{ base: 'none', md: 'block' }} textAlign="left">
+                  <Text fontSize="12px" fontWeight="700" lineHeight="1" color="white">
+                    {user?.email?.split('@')[0] || 'Kullanıcı'}
+                  </Text>
+                  <Text fontSize="10px" color="whiteAlpha.500" mt="2px" letterSpacing="widest">
+                    {user?.role?.toUpperCase() || 'MİSAFİR'}
+                  </Text>
+                </Box>
+              </Flex>
+            </motion.div>
           </Menu.Trigger>
 
           <Menu.Positioner>
-            <Menu.Content bg="white" shadow="lg" borderRadius="lg" minW="200px" border="none" _dark={{ bg: 'gray.800' }}>
-              <Menu.Item value="profil" cursor="pointer" _hover={{ bg: 'gray.50' }} _dark={{ _hover: { bg: 'gray.700' } }}>
+            <Menu.Content
+              minW="200px"
+              borderRadius="14px"
+              border="1px solid rgba(255,255,255,0.08)"
+              style={{
+                background: 'rgba(10, 20, 42, 0.95)',
+                backdropFilter: 'blur(20px)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+              }}
+            >
+              <Menu.Item
+                value="profil"
+                cursor="pointer"
+                color="whiteAlpha.800"
+                borderRadius="8px"
+                _hover={{ bg: 'rgba(255,255,255,0.07)', color: 'white' }}
+              >
                 <HStack gap={2}>
-                  <User size={16} />
+                  <User size={15} />
                   <Text fontSize="sm" fontWeight="500">Profil</Text>
                 </HStack>
               </Menu.Item>
-              <Menu.Item value="ayarlar" cursor="pointer" _hover={{ bg: 'gray.50' }} _dark={{ _hover: { bg: 'gray.700' } }}>
+              <Menu.Item
+                value="ayarlar"
+                cursor="pointer"
+                color="whiteAlpha.800"
+                borderRadius="8px"
+                _hover={{ bg: 'rgba(255,255,255,0.07)', color: 'white' }}
+              >
                 <HStack gap={2}>
-                  <Settings size={16} />
+                  <Settings size={15} />
                   <Text fontSize="sm" fontWeight="500">Ayarlar</Text>
                 </HStack>
               </Menu.Item>
-              <Menu.Separator />
+              <Menu.Separator borderColor="rgba(255,255,255,0.08)" />
               <Menu.Item
                 value="cikis"
                 cursor="pointer"
-                color="#e53e3e"
+                color="#ff7777"
+                borderRadius="8px"
                 onClick={handleLogout}
-                _hover={{ bg: '#ffe5e5' }}
-                _dark={{ _hover: { bg: 'whiteAlpha.100' } }}
+                _hover={{ bg: 'rgba(229,62,62,0.12)' }}
               >
                 <HStack gap={2}>
-                  <LogOut size={16} />
+                  <LogOut size={15} />
                   <Text fontSize="sm" fontWeight="500">Çıkış Yap</Text>
                 </HStack>
               </Menu.Item>

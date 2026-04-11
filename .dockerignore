@@ -1,0 +1,39 @@
+**/.git
+**/.gitignore
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.venv
+**/venv
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+
+# Node
+**/node_modules
+**/dist
+**/.next
+**/.nuxt
+
+# Logs & temp
+**/*.log
+**/tmp
+**/.DS_Store
+**/Thumbs.db
+
+# IDE
+**/.idea
+**/.vscode
+**/*.swp
+
+# Test & docs
+**/tests/__pycache__
+**/coverage
+**/.coverage
+**/htmlcov

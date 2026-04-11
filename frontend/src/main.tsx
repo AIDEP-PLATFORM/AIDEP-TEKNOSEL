@@ -6,7 +6,8 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Provider>
+    {/* defaultTheme="dark" → uygulama her zaman dark modda başlar */}
+    <Provider defaultTheme="dark">
       <App />
     </Provider>
   </React.StrictMode>

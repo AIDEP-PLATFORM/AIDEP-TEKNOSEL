@@ -1,4 +1,4 @@
-.PHONY: help dev prod down logs migrate shell-db shell-back shell-ai test test-mvp demo-seed clean osrm-check
+.PHONY: help dev dev-fast prod down logs migrate shell-db shell-back shell-ai test test-mvp demo-seed clean osrm-check build-cache
 
 help:
 	@echo "======= AIDEP Makefile ======="
@@ -19,12 +19,26 @@ help:
 dev:
 	@[ -f .env ] || cp .env.example .env
 	@echo "🚀 Geliştirme ortamı başlatılıyor..."
-	docker compose --profile dev up --build
+	DOCKER_BUILDKIT=1 docker compose --profile dev up --build
+
+# Hızlı dev: AI servisi kapalı + hot-reload (ilk build'den sonra saniyeler içinde başlar)
+dev-fast:
+	@[ -f .env ] || cp .env.example .env
+	@echo "⚡ Hızlı geliştirme ortamı (AI servisi kapalı)..."
+	DOCKER_BUILDKIT=1 docker compose \
+		-f docker-compose.yml \
+		-f docker-compose.dev.yml \
+		--profile dev up --build
 
 prod:
 	@[ -f .env ] || cp .env.example .env
 	@echo "🔒 Prodüksiyon arka planda başlatılıyor..."
-	docker compose up --build -d
+	DOCKER_BUILDKIT=1 docker compose up --build -d
+
+# Bağımlılık katmanlarını önceden cache'le (CI/CD öncesi çalıştır)
+build-cache:
+	@echo "📦 Bağımlılık katmanları cache'leniyor..."
+	DOCKER_BUILDKIT=1 docker compose build --parallel
 
 down:
 	@echo "🛑 Sistem durduruluyor..."

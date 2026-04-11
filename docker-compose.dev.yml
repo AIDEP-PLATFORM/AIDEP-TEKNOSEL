@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Development override — "docker compose -f docker-compose.yml -f docker-compose.dev.yml up"
+#
+# Amaç:
+#   1. frontend / backend hot-reload (volume mount ile)
+#   2. ai servisi DEV'de kapalı (PyTorch ~3GB indirme yok)
+#   3. BuildKit cache mount'ları aktif
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+
+  # ── Backend: kaynak kodu volume mount → kod değişince otomatik yeniden başlar
+  backend:
+    build:
+      context: ./backend
+      cache_from:
+        - aidep-backend:local      # önceki build'den katman cache'i
+    volumes:
+      - ./backend:/app             # hot-reload için
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+
+  # ── Frontend: dev modda vite dev server (build yok, anlık HMR)
+  web:
+    build:
+      context: ./frontend
+      cache_from:
+        - aidep-web:local
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules          # node_modules konteyner içinde kalır
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+    environment:
+      - NODE_ENV=development
+
+  # ── AI servisi dev'de kapalı (isteğe bağlı aç: --profile ai)
+  ai:
+    profiles:
+      - ai                         # docker compose --profile ai up
