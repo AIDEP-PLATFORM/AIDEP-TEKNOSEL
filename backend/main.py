@@ -10,7 +10,6 @@ from app.api.routes import websocket as websocket_routes
 from app.core.config import settings
 from app.core.db import async_engine
 from app.core.redis import get_redis_client
-from app.core.supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +45,6 @@ app.include_router(websocket_routes.router, prefix="/ws", tags=["websocket"])
 async def health_check():
     db_status = "ok"
     redis_status = "ok"
-    supabase_status = "ok"
 
     try:
         async with async_engine.connect() as conn:
@@ -60,22 +58,8 @@ async def health_check():
     except Exception:
         redis_status = "error"
 
-    try:
-        sb = get_supabase()
-        sb.table("_dummy_health_check_").select("*").limit(1).execute()
-    except Exception as e:
-        msg = str(e)
-        # Bu hatalar Supabase'e bağlandık ama tablo yok demek — bağlantı OK
-        ok_signals = ["404", "does not exist", "relation", "PGRST205", "schema cache", "APIError"]
-        if any(signal in msg for signal in ok_signals):
-            supabase_status = "ok"
-        else:
-            supabase_status = f"error: {msg}"
-
     return {
         "api": "ok",
-        "db (supabase)": db_status,
+        "db": db_status,
         "redis": redis_status,
-        "supabase_client": supabase_status,
     }
-
