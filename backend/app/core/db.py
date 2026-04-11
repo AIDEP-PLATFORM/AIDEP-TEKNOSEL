@@ -5,16 +5,13 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 from app.models.base import Base
 
 async_engine = create_async_engine(
     settings.DATABASE_URL_ASYNC,
-    echo=settings.DEBUG, # DEBUG açıksa her SQL sorgusunu terminale yazar
-    poolclass=NullPool, # SQLAlchemy'nin kendi bağlantı havuzunu kapatır. Supabase zaten kendi havuzunu yönetiyor (pgBouncer), ikisi çakışınca DuplicatePreparedStatementError hatası çıkıyor. NullPool bunu önler
-    connect_args={"ssl": "require", "statement_cache_size": 0}, #Supabase SSL zorunlu kılar, şifresiz bağlantıyı reddeder
+    echo=settings.DEBUG,  # DEBUG açıksa her SQL sorgusunu terminale yazar
 )
 
 
