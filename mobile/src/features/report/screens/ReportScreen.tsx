@@ -75,18 +75,30 @@ export default function ReportScreen() {
   const requestLocation = async (): Promise<{ lat: number; lon: number } | null> => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      showToast('Raporunuza konum eklemek için konum izni gereklidir.', 'warning');
+      showToast('Konum izni verilmedi. Lütfen ayarlardan izin verin.', 'warning');
       return null;
     }
+    showToast('GPS koordinatları alınıyor...', 'location');
     const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
     const coords = { lat: loc.coords.latitude, lon: loc.coords.longitude };
     setLocation(coords);
+    showToast(`Konum alındı: ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`, 'success');
     return coords;
   };
 
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') { showToast('Galeri iznine ihtiyaç var.', 'warning'); return; }
+    // Galeri açılmadan önce konum al
+    if (!location) {
+      showToast('GPS koordinatları alınıyor...', 'location');
+      const locPerm = await Location.requestForegroundPermissionsAsync();
+      if (locPerm.status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+        showToast(`Konum alındı: ${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`, 'success');
+      }
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true, quality: 0.7,
@@ -98,9 +110,18 @@ export default function ReportScreen() {
   };
 
   const takePhoto = async () => {
-    await requestLocation(); // konum badge için
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') { showToast('Kamera iznine ihtiyaç var.', 'warning'); return; }
+    // Kamera açılmadan önce konum al
+    if (!location) {
+      showToast('GPS koordinatları alınıyor...', 'location');
+      const locPerm = await Location.requestForegroundPermissionsAsync();
+      if (locPerm.status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        setLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+        showToast(`Konum alındı: ${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`, 'success');
+      }
+    }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) {
       setPhotos(prev => [...prev, result.assets[0].uri].slice(0, 5));
@@ -183,12 +204,6 @@ export default function ReportScreen() {
             <Text style={styles.heroTitle}>Hasar Raporla</Text>
             <Text style={styles.heroSub}>Sahadan anlık hasar bildirimi yapın</Text>
           </View>
-          <TouchableOpacity onPress={requestLocation} activeOpacity={0.7}
-            style={[styles.locBadge, location && styles.locBadgeActive]}
-          >
-            <Icon name="mapPin" size={14} color="#fff" strokeWidth={2.5} />
-            <Text style={styles.locText}>{location ? '✓ Konum Alındı' : 'Konum Al'}</Text>
-          </TouchableOpacity>
         </View>
       </View>
 

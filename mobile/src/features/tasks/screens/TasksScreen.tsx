@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
 import Icon from '../../../shared/components/Icon';
 import colors from '../../../shared/theme/colors';
 import { useAuthStore } from '../../../core/stores/auth.store';
 import TopBar from '../../../shared/components/TopBar';
 import FloatingBubbles from '../../../shared/components/FloatingBubbles';
 import { showToast } from '../../../shared/components/Toast';
+import { volunteerService, DamageReport } from '../services/volunteer.service';
 
 // ─── Citizen ──────────────────────────────────────────────────────────────────
 const infoCards = [
@@ -100,19 +102,89 @@ const resources = [
 ];
 
 function VolunteerView() {
-  const [myStatus, setMyStatus] = useState('available');
+  const [myStatus, setMyStatus]           = useState('available');
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [locationLoading, setLocLoading]  = useState(false);
+  const [locationOk, setLocationOk]       = useState(false);
+  const [tasks, setTasks]                 = useState<DamageReport[]>([]);
+  const [tasksLoading, setTasksLoading]   = useState(true);
+  const [refreshing, setRefreshing]       = useState(false);
   const [resourceValues, setResourceValues] = useState({ people: 5, vehicles: 2, equipment: 8 });
 
-  const statusColor: Record<string, string> = { active: '#059669', waiting: '#D97706', done: '#94A3B8' };
-  const statusLabel: Record<string, string> = { active: 'Aktif', waiting: 'Bekliyor', done: 'Tamamlandı' };
-  const priorityColor: Record<string, string> = { high: '#DC2626', medium: '#D97706', low: '#059669' };
+  const statusColor: Record<string, string> = { verified: '#059669', analyzing: '#D97706', done: '#94A3B8' };
+  const statusLabel: Record<string, string> = { verified: 'Aktif', analyzing: 'Bekliyor', done: 'Tamamlandı' };
+  const priorityColor = (severity: number | null) => {
+    if (!severity) return '#94A3B8';
+    if (severity >= 4) return '#DC2626';
+    if (severity >= 3) return '#D97706';
+    return '#059669';
+  };
+
+  const loadTasks = useCallback(async () => {
+    const data = await volunteerService.getDamageReports({ limit: 20 });
+    setTasks(data.items);
+    setTasksLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => { loadTasks(); }, []);
+
+  // Önce tanımla, sonra kullan
+  const ensureVolunteerProfile = async () => {
+    const res = await volunteerService.createProfile();
+    return res !== null;
+  };
+
+  const handleStatusChange = async (key: string) => {
+    setStatusLoading(true);
+    setMyStatus(key);
+    await ensureVolunteerProfile();
+    const isAvailable = key === 'available';
+    const res = await volunteerService.updateAvailability(isAvailable);
+    setStatusLoading(false);
+    if (res) {
+      showToast(
+        key === 'available' ? 'Durumunuz: Müsait olarak güncellendi.' :
+        key === 'on_duty'   ? 'Durumunuz: Görevde olarak güncellendi.' :
+                              'Durumunuz: Yardım gerekli olarak güncellendi.',
+        key === 'need_help' ? 'warning' : 'success'
+      );
+    } else {
+      showToast('Durum güncellenemedi. Tekrar deneyin.', 'error');
+    }
+  };
+
+  const handleLocationUpdate = async () => {
+    setLocLoading(true);
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      showToast('Konum izni gerekli.', 'warning');
+      setLocLoading(false);
+      return;
+    }
+    // Önce profil var mı diye garanti al
+    await ensureVolunteerProfile();
+    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+    const res = await volunteerService.updateLocation(loc.coords.latitude, loc.coords.longitude);
+    setLocLoading(false);
+    if (res) {
+      setLocationOk(true);
+      showToast('Konumunuz sisteme iletildi.', 'success');
+    } else {
+      showToast('Konum gönderilemedi. Tekrar deneyin.', 'error');
+    }
+  };
 
   const updateResource = (key: string, delta: number) => {
     setResourceValues(prev => ({ ...prev, [key]: Math.max(0, (prev as any)[key] + delta) }));
   };
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadTasks(); }} tintColor="rgba(255,255,255,0.6)" />}
+    >
 
       {/* ── Durum Bildirimi ── */}
       <LinearGradient colors={['#064E3B', '#065F46']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.statusCard}>
@@ -121,11 +193,15 @@ function VolunteerView() {
             <Icon name="checkCircle" size={18} color="#6EE7B7" strokeWidth={2.5} />
           </View>
           <Text style={styles.statusCardTitle}>DURUMUM</Text>
-          <View style={[styles.statusActiveDot, { backgroundColor: myStatuses.find(s=>s.key===myStatus)?.color ?? '#059669' }]} />
+          {statusLoading
+            ? <ActivityIndicator size="small" color="#6EE7B7" />
+            : <View style={[styles.statusActiveDot, { backgroundColor: myStatuses.find(s=>s.key===myStatus)?.color ?? '#059669' }]} />
+          }
         </View>
         <View style={styles.statusRow}>
           {myStatuses.map(s => (
-            <TouchableOpacity key={s.key} activeOpacity={0.8} onPress={() => setMyStatus(s.key)}
+            <TouchableOpacity key={s.key} activeOpacity={0.8} onPress={() => handleStatusChange(s.key)}
+              disabled={statusLoading}
               style={[styles.statusChip, {
                 borderColor: myStatus === s.key ? s.color : 'rgba(255,255,255,0.2)',
                 backgroundColor: myStatus === s.key ? s.color : 'rgba(255,255,255,0.1)',
@@ -136,14 +212,24 @@ function VolunteerView() {
             </TouchableOpacity>
           ))}
         </View>
+        {/* Konum güncelle */}
+        <TouchableOpacity onPress={handleLocationUpdate} disabled={locationLoading} activeOpacity={0.8} style={styles.locationBtn}>
+          {locationLoading
+            ? <ActivityIndicator size="small" color="#6EE7B7" />
+            : <Icon name="mapPin" size={14} color={locationOk ? '#6EE7B7' : 'rgba(255,255,255,0.7)'} strokeWidth={2.5} />
+          }
+          <Text style={[styles.locationBtnText, locationOk && { color: '#6EE7B7' }]}>
+            {locationOk ? '✓ Konum Güncellendi' : 'Konumumu Güncelle'}
+          </Text>
+        </TouchableOpacity>
       </LinearGradient>
 
       {/* ── Özet istatistik ── */}
       <View style={styles.teamSummaryRow}>
         {[
-          { num: '3',  label: 'Aktif Görev', color: '#60A5FA', grad: ['rgba(37,99,235,0.5)', 'rgba(37,99,235,0.2)'] as [string,string] },
-          { num: '4',  label: 'Ekip Üyesi',  color: '#6EE7B7', grad: ['rgba(5,150,105,0.5)', 'rgba(5,150,105,0.2)'] as [string,string] },
-          { num: '12', label: 'Tamamlanan',  color: '#FCD34D', grad: ['rgba(217,119,6,0.5)', 'rgba(217,119,6,0.2)'] as [string,string] },
+          { num: String(tasks.filter(t=>t.status==='verified').length),  label: 'Aktif Görev', color: '#60A5FA', grad: ['rgba(37,99,235,0.5)', 'rgba(37,99,235,0.2)'] as [string,string] },
+          { num: String(volunteerMembers.length),                         label: 'Ekip Üyesi',  color: '#6EE7B7', grad: ['rgba(5,150,105,0.5)', 'rgba(5,150,105,0.2)'] as [string,string] },
+          { num: String(tasks.filter(t=>t.status==='done').length),       label: 'Tamamlanan',  color: '#FCD34D', grad: ['rgba(217,119,6,0.5)', 'rgba(217,119,6,0.2)'] as [string,string] },
         ].map((s, i) => (
           <LinearGradient key={i} colors={s.grad} start={{x:0,y:0}} end={{x:1,y:1}} style={[styles.summaryCard, { borderTopColor: s.color }]}>
             <Text style={[styles.summaryNum, { color: s.color }]}>{s.num}</Text>
@@ -200,40 +286,63 @@ function VolunteerView() {
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* ── Görevler ── */}
+      {/* ── Hasar Raporları / Görevler ── */}
       <View style={styles.sectionHeader}>
         <LinearGradient colors={['#1976D2', '#60A5FA']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.sectionDot} />
-        <Text style={styles.sectionLabel}>GÖREVLER</Text>
+        <Text style={styles.sectionLabel}>HASAR RAPORLARI</Text>
+        {!tasksLoading && <View style={styles.taskCountBadge}><Text style={styles.taskCountText}>{tasks.length}</Text></View>}
       </View>
-      {volunteerTasks.map((task) => {
-        const sc = statusColor[task.status];
-        return (
-        <TouchableOpacity key={task.id} activeOpacity={0.85}>
-          <LinearGradient colors={[sc + '45', sc + '18']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.taskCard}>
-            <View style={styles.taskCardTop}>
-              <View style={styles.taskCardTitleRow}>
-                <View style={[styles.priorityDot, { backgroundColor: priorityColor[task.priority] }]} />
-                <Text style={styles.taskCardTitle} numberOfLines={1}>{task.title}</Text>
+      {tasksLoading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color="rgba(255,255,255,0.7)" />
+          <Text style={styles.loadingText}>Raporlar yükleniyor...</Text>
+        </View>
+      ) : tasks.length === 0 ? (
+        <LinearGradient colors={['rgba(25,118,210,0.3)','rgba(25,118,210,0.1)']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.emptyTaskBox}>
+          <Icon name="shield" size={28} color="rgba(255,255,255,0.4)" strokeWidth={1.5} />
+          <Text style={styles.emptyTaskText}>Henüz hasar raporu bulunmuyor</Text>
+        </LinearGradient>
+      ) : (
+        tasks.map((task) => {
+          const sc = statusColor[task.status] ?? '#94A3B8';
+          const pc = priorityColor(task.severity);
+          const coords = task.lat && task.lng ? `${task.lat.toFixed(4)}, ${task.lng.toFixed(4)}` : 'Konum yok';
+          const classLabel = task.damage_class
+            ? task.damage_class.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+            : 'Sınıflandırılmadı';
+          return (
+          <TouchableOpacity key={task.id} activeOpacity={0.85}>
+            <LinearGradient colors={[sc + '55', sc + '20']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.taskCard}>
+              <View style={styles.taskCardTop}>
+                <View style={styles.taskCardTitleRow}>
+                  <View style={[styles.priorityDot, { backgroundColor: pc }]} />
+                  <Text style={styles.taskCardTitle} numberOfLines={1}>{classLabel}</Text>
+                </View>
+                <View style={[styles.taskStatusBadge, { backgroundColor: sc + '40' }]}>
+                  <Text style={[styles.taskStatusText, { color: '#fff' }]}>{statusLabel[task.status] ?? task.status}</Text>
+                </View>
               </View>
-              <View style={[styles.taskStatusBadge, { backgroundColor: sc + '35' }]}>
-                <Text style={[styles.taskStatusText, { color: '#fff' }]}>{statusLabel[task.status]}</Text>
+              {task.description ? (
+                <Text style={styles.taskDesc} numberOfLines={2}>{task.description}</Text>
+              ) : null}
+              <View style={styles.taskCardMeta}>
+                <View style={styles.taskMetaItem}>
+                  <Icon name="mapPin" size={13} color="rgba(255,255,255,0.55)" />
+                  <Text style={styles.taskMetaText}>{coords}</Text>
+                </View>
+                {task.severity ? (
+                  <View style={styles.taskMetaItem}>
+                    <Icon name="alertTriangle" size={13} color="rgba(255,255,255,0.55)" />
+                    <Text style={styles.taskMetaText}>Şiddet: {task.severity}/5</Text>
+                  </View>
+                ) : null}
               </View>
-            </View>
-            <View style={styles.taskCardMeta}>
-              <View style={styles.taskMetaItem}>
-                <Icon name="mapPin" size={13} color="rgba(255,255,255,0.55)" />
-                <Text style={styles.taskMetaText}>{task.location}</Text>
-              </View>
-              <View style={styles.taskMetaItem}>
-                <Icon name="users" size={13} color="rgba(255,255,255,0.55)" />
-                <Text style={styles.taskMetaText}>{task.assigned}</Text>
-              </View>
-            </View>
-            <Text style={styles.taskTime}>{task.time}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        );
-      })}
+              <Text style={styles.taskTime}>{new Date(task.created_at).toLocaleDateString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          );
+        })
+      )}
 
       {/* ── Ekip üyeleri ── */}
       <View style={[styles.sectionHeader, { marginTop: 8 }]}>
@@ -506,6 +615,25 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, flex: 1,
   },
   statusChipText: { fontSize: 13, fontWeight: '800' },
+  locationBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    marginTop: 12, paddingTop: 12,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)',
+  },
+  locationBtnText: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.7)' },
+  taskCountBadge: {
+    marginLeft: 'auto' as any,
+    backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20,
+  },
+  taskCountText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  loadingBox: { alignItems: 'center', paddingVertical: 32, gap: 12 },
+  loadingText: { color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: '600' },
+  emptyTaskBox: {
+    alignItems: 'center', gap: 10, padding: 28,
+    borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+  },
+  emptyTaskText: { color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: '600' },
+  taskDesc: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 8, lineHeight: 18 },
 
   teamSummaryRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   summaryCard: {

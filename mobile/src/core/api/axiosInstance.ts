@@ -13,13 +13,18 @@ api.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  console.log('[API] →', config.method?.toUpperCase(), config.baseURL + config.url);
   return config;
 });
 
 // 401 gelirse token temizle
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    console.log('[API] ←', res.status, res.config.url);
+    return res;
+  },
   async (error) => {
+    console.warn('[API] ERR', error?.response?.status, error?.config?.url, error?.response?.data);
     if (error.response?.status === 401) {
       await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
     }
