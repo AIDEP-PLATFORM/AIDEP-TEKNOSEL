@@ -6,6 +6,7 @@ from app.api.dependencies.db import get_db
 from app.authentication.jwt import create_access_token, create_refresh_token, verify_token
 from app.core.security import hash_password, verify_password
 from app.crud.user import create_user, get_user_by_email, get_user_by_id, get_user_by_tc
+from app.crud.volunteer import create_volunteer
 from app.models.user import User
 from app.schemas.token import RefreshRequest, TokenResponse
 from app.schemas.user import UserLogin, UserRegister, UserResponse
@@ -28,6 +29,9 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
         city=body.city,
         role=body.role,
     )
+
+    if user.role == "volunteer":
+        await create_volunteer(db, user.id)
 
     return TokenResponse(
         access_token=create_access_token(str(user.id), user.email),
