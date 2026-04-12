@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   Modal,
   FlatList,
 } from 'react-native';
@@ -18,6 +17,7 @@ import colors from '../../../shared/theme/colors';
 import Icon from '../../../shared/components/Icon';
 import { authService } from '../services/auth.service';
 import { useAuthStore } from '../../../core/stores/auth.store';
+import { showToast } from '../../../shared/components/Toast';
 
 const roleConfig: Record<string, {
   title: string;
@@ -77,32 +77,31 @@ const RegisterScreen = () => {
     const { adSoyad, telefon, email, tc, adres, sifre, sifreTekrar } = form;
 
     if (!adSoyad || !telefon || !email || !tc || !adres || !sifre || !sifreTekrar) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurunuz.'); return;
+      showToast('Lütfen tüm alanları doldurunuz.', 'error'); return;
     }
 
     if (!email.includes('@')) {
-      Alert.alert('Hata', 'Geçerli bir e-posta adresi giriniz.'); return;
+      showToast('Geçerli bir e-posta adresi giriniz.', 'error'); return;
     }
 
     if (tc.length !== 11) {
-      Alert.alert('Hata', 'TC kimlik numarası 11 haneli olmalıdır.'); return;
+      showToast('TC kimlik numarası 11 haneli olmalıdır.', 'error'); return;
     }
 
     if (telefon.length !== countryCode.length) {
-      Alert.alert('Hata', `${countryCode.name} için telefon numarası ${countryCode.length} haneli olmalıdır.`); return;
+      showToast(`${countryCode.name} için telefon numarası ${countryCode.length} haneli olmalıdır.`, 'error'); return;
     }
 
-    // Basit "saçma sapan numara" kontrolü (örn: hep aynı rakam)
     if (/^(\d)\1+$/.test(telefon)) {
-      Alert.alert('Hata', 'Lütfen geçerli bir telefon numarası giriniz.'); return;
+      showToast('Lütfen geçerli bir telefon numarası giriniz.', 'error'); return;
     }
 
     if (sifre.length < 8) {
-      Alert.alert('Hata', 'Şifre en az 8 karakter olmalıdır.'); return;
+      showToast('Şifre en az 8 karakter olmalıdır.', 'error'); return;
     }
 
     if (sifre !== sifreTekrar) {
-      Alert.alert('Hata', 'Şifreler birbiriyle eşleşmiyor. Lütfen kontrol ediniz.'); return;
+      showToast('Şifreler birbiriyle eşleşmiyor. Lütfen kontrol ediniz.', 'error'); return;
     }
 
     const roleMap: Record<string, string> = { normal: 'citizen', stk: 'volunteer', yetkili: 'admin' };
@@ -116,7 +115,7 @@ const RegisterScreen = () => {
     });
 
     if (err) {
-      Alert.alert('Kayıt Hatası', err);
+      showToast(err, 'error');
       return;
     }
 
