@@ -16,12 +16,12 @@ export const authService = {
   // Giriş yap
   async login(email: string, password: string): Promise<string | null> {
     try {
-      const res = await api.post('/api/v1/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email, password });
       const { access_token, refresh_token } = res.data;
       await AsyncStorage.setItem('access_token', access_token);
       await AsyncStorage.setItem('refresh_token', refresh_token);
       // Kullanıcı bilgilerini çek
-      const me = await api.get('/api/v1/auth/me');
+      const me = await api.get('/auth/me');
       await AsyncStorage.setItem('user', JSON.stringify(me.data));
       return null;
     } catch (e: any) {
@@ -40,7 +40,7 @@ export const authService = {
     profile: { full_name: string; phone: string; tc_no: string; city?: string; role?: string }
   ): Promise<string | null> {
     try {
-      const res = await api.post('/api/v1/auth/register', {
+      const res = await api.post('/auth/register', {
         email,
         password,
         full_name: profile.full_name,
@@ -52,7 +52,7 @@ export const authService = {
       const { access_token, refresh_token } = res.data;
       await AsyncStorage.setItem('access_token', access_token);
       await AsyncStorage.setItem('refresh_token', refresh_token);
-      const me = await api.get('/api/v1/auth/me');
+      const me = await api.get('/auth/me');
       await AsyncStorage.setItem('user', JSON.stringify(me.data));
       return null;
     } catch (e: any) {

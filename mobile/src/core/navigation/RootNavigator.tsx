@@ -7,6 +7,7 @@ import AuthNavigator from './AuthNavigator';
 import { useAuthStore } from '../stores/auth.store';
 import { authService } from '../../features/auth/services/auth.service';
 import colors from '../../shared/theme/colors';
+import ToastProvider from '../../shared/components/Toast';
 
 const RootNavigator = () => {
   const { isLoggedIn, setUser } = useAuthStore();
@@ -32,6 +33,7 @@ const RootNavigator = () => {
     <SafeAreaProvider>
       <NavigationContainer>
         {isLoggedIn ? <AppNavigator /> : <AuthNavigator />}
+        <ToastProvider />
       </NavigationContainer>
     </SafeAreaProvider>
   );
