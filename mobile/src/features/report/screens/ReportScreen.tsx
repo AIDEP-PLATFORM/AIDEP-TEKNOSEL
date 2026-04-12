@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, Image, Alert, Animated,
+  StyleSheet, ScrollView, Image, ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -12,23 +12,51 @@ import AnimatedPress from '../../../shared/components/AnimatedPress';
 import TopBar from '../../../shared/components/TopBar';
 import FloatingBubbles from '../../../shared/components/FloatingBubbles';
 import { useAuthStore } from '../../../core/stores/auth.store';
+import api from '../../../core/api/axiosInstance';
+import { showToast } from '../../../shared/components/Toast';
 
 const reportTypes = [
-  { key: 'yikilanbina', label: 'Yıkılan Bina', color: '#E53E3E', bg: '#FFF5F5', icon: 'shield'        as const, desc: 'Kısmi veya tam çöküş' },
-  { key: 'kapaliyol',   label: 'Kapanan Yol',   color: '#DD6B20', bg: '#FFFAF0', icon: 'alertTriangle' as const, desc: 'Enkaz, heyelan vb.' },
-  { key: 'diger',       label: 'Diğer Hasar',   color: '#2B6CB0', bg: '#EBF8FF', icon: 'mapPin'        as const, desc: 'Altyapı, yangın vb.' },
+  { key: 'yikilanbina',  label: 'Yıkılan Bina',     color: '#DC2626', bg: '#FEF2F2', icon: 'shield'        as const, desc: 'Kısmi veya tam çökmüş yapı' },
+  { key: 'hasarlibina',  label: 'Hasarlı Bina',      color: '#EA580C', bg: '#FFF7ED', icon: 'alertTriangle' as const, desc: 'Oturulmaz ya da riskli bina' },
+  { key: 'enkaz',        label: 'Enkaz / Göçük',     color: '#B45309', bg: '#FFFBEB', icon: 'alertTriangle' as const, desc: 'Altında insan olabilecek alan' },
+  { key: 'kapaliyol',    label: 'Kapanan Yol',        color: '#7C3AED', bg: '#F5F3FF', icon: 'mapPin'        as const, desc: 'Enkaz veya çatlakla kapanmış' },
+  { key: 'altyapi',      label: 'Altyapı Hasarı',    color: '#0369A1', bg: '#F0F9FF', icon: 'info'          as const, desc: 'Su, elektrik, doğalgaz, köprü' },
+  { key: 'diger',        label: 'Diğer',              color: '#475569', bg: '#F8FAFC', icon: 'mapPin'        as const, desc: 'Yukarıdaki kategorilere uymayan' },
 ];
 
-const aiLevels = [
-  { label: 'Hafif Hasar',   color: '#38A169', bg: '#F0FFF4', bar: 0.25 },
-  { label: 'Orta Hasar',    color: '#D69E2E', bg: '#FFFFF0', bar: 0.55 },
-  { label: 'Ağır Hasar',    color: '#E53E3E', bg: '#FFF5F5', bar: 0.85 },
-];
+// severity 1-5 → görsel seviye
+const getSeverityLevel = (severity: number | null) => {
+  if (!severity || severity <= 0) return null;
+  if (severity <= 2) return { label: 'Hafif Hasar',  color: '#38A169', bg: '#F0FFF4', bar: severity / 5 };
+  if (severity <= 3) return { label: 'Orta Hasar',   color: '#D69E2E', bg: '#FFFFF0', bar: severity / 5 };
+  return               { label: 'Ağır Hasar',   color: '#E53E3E', bg: '#FFF5F5', bar: severity / 5 };
+};
+
+const damageClassLabels: Record<string, string> = {
+  bina_yikilmis:    'Yıkılmış Bina',
+  bina_cok_riskli:  'Çok Riskli Bina',
+  bina_riskli:      'Riskli Bina',
+  bina_saglam:      'Sağlam Bina',
+  yol_yikilmis:     'Yıkılmış Yol',
+  yol_gecilemez:    'Geçilemez Yol',
+  yol_cok_hasarli:  'Çok Hasarlı Yol',
+  yol_orta_hasarli: 'Orta Hasarlı Yol',
+  yol_az_hasarli:   'Az Hasarlı Yol',
+  yol_gecilebilir:  'Geçilebilir Yol',
+  yol_saglam:       'Sağlam Yol',
+  pending:          'Analiz Bekleniyor',
+};
 
 const roleGradients: Record<string, [string, string, string]> = {
   citizen:   ['#1565C0', '#1976D2', '#2196F3'],
   volunteer: ['#1B5E20', '#2E7D32', '#43A047'],
   admin:     ['#4A148C', '#7B1FA2', '#AB47BC'],
+};
+
+const roleCardBg: Record<string, string> = {
+  citizen:   '#EFF6FF',
+  volunteer: '#F0FDF4',
+  admin:     '#F5F3FF',
 };
 
 export default function ReportScreen() {
@@ -41,22 +69,24 @@ export default function ReportScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [focusedField, setFocusedField] = useState(false);
-  const [aiResult, setAiResult] = useState<number | null>(null); // 0=hafif 1=orta 2=ağır
+  const [submitting, setSubmitting] = useState(false);
+  const [aiResult, setAiResult] = useState<{ damage_class: string | null; severity: number | null; status: string } | null>(null);
 
-  const requestLocation = async (): Promise<boolean> => {
+  const requestLocation = async (): Promise<{ lat: number; lon: number } | null> => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Konum İzni', 'Raporunuza konum eklemek için konum izni gereklidir.');
-      return false;
+      showToast('Raporunuza konum eklemek için konum izni gereklidir.', 'warning');
+      return null;
     }
     const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-    setLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
-    return true;
+    const coords = { lat: loc.coords.latitude, lon: loc.coords.longitude };
+    setLocation(coords);
+    return coords;
   };
 
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('İzin Gerekli', 'Galeri iznine ihtiyaç var.'); return; }
+    if (status !== 'granted') { showToast('Galeri iznine ihtiyaç var.', 'warning'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true, quality: 0.7,
@@ -64,35 +94,82 @@ export default function ReportScreen() {
     if (!result.canceled) {
       const uris = result.assets.map(a => a.uri);
       setPhotos(prev => [...prev, ...uris].slice(0, 5));
-      // Simüle AI analiz
-      setTimeout(() => setAiResult(Math.floor(Math.random() * 3)), 1500);
     }
   };
 
   const takePhoto = async () => {
-    await requestLocation();
+    await requestLocation(); // konum badge için
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('İzin Gerekli', 'Kamera iznine ihtiyaç var.'); return; }
+    if (status !== 'granted') { showToast('Kamera iznine ihtiyaç var.', 'warning'); return; }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) {
       setPhotos(prev => [...prev, result.assets[0].uri].slice(0, 5));
-      setTimeout(() => setAiResult(Math.floor(Math.random() * 3)), 1500);
     }
   };
 
-  const handleSubmit = () => {
-    if (!selectedType) { Alert.alert('Hata', 'Lütfen hasar türü seçiniz.'); return; }
-    if (!description.trim()) { Alert.alert('Hata', 'Lütfen açıklama giriniz.'); return; }
-    Alert.alert('✓ Rapor Gönderildi', 'Raporunuz sisteme iletildi. AI analizi tamamlandığında bildirim alacaksınız.', [
-      { text: 'Tamam', onPress: () => { setSelectedType(null); setDescription(''); setPhotos([]); setAiResult(null); setLocation(null); } }
-    ]);
+  const handleSubmit = async () => {
+    if (!selectedType)      { showToast('Lütfen hasar türü seçiniz.', 'error'); return; }
+    if (!description.trim()){ showToast('Lütfen açıklama giriniz.', 'error'); return; }
+    if (photos.length === 0){ showToast('Lütfen en az 1 fotoğraf ekleyiniz.', 'error'); return; }
+
+    // Konum yoksa al
+    let loc = location;
+    if (!loc) {
+      loc = await requestLocation();
+      if (!loc) return;
+    }
+
+    setSubmitting(true);
+    setAiResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('lat', String(loc.lat));
+      formData.append('lng', String(loc.lon));
+      formData.append('description', description);
+      formData.append('photo', {
+        uri: photos[0],
+        type: 'image/jpeg',
+        name: 'photo.jpg',
+      } as any);
+
+      const response = await api.post('/damage', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 40000, // AI analiz için 40 saniye
+      });
+
+      const data = response.data;
+      setAiResult({
+        damage_class: data.damage_class,
+        severity: data.severity,
+        status: data.status,
+      });
+
+      const msg = data.status === 'verified'
+        ? `Rapor gönderildi! Tespit: ${damageClassLabels[data.damage_class] ?? data.damage_class}`
+        : 'Raporunuz alındı. AI analizi devam ediyor...';
+      showToast(msg, 'success');
+      setSelectedType(null);
+      setDescription('');
+      setPhotos([]);
+      setLocation(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail ?? 'Rapor gönderilemedi. Lütfen tekrar deneyin.';
+      showToast(typeof msg === 'string' ? msg : 'Rapor gönderilemedi.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const selected = reportTypes.find(t => t.key === selectedType);
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={gradient} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient
+        colors={[gradient[0], gradient[1], gradient[2], roleCardBg[role] ?? '#EEF2FF']}
+        locations={[0, 0.2, 0.4, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
       <FloatingBubbles />
 
       {/* Hero */}
@@ -117,7 +194,6 @@ export default function ReportScreen() {
 
       {/* Form kart */}
       <View style={styles.card}>
-        <View style={styles.pullHandle} />
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scrollContent}>
 
@@ -125,50 +201,89 @@ export default function ReportScreen() {
           <View style={styles.sectionHeader}>
             <LinearGradient colors={['#E53E3E', '#FC8181']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.sectionDot} />
             <Text style={styles.sectionLabel}>HASAR TÜRÜ</Text>
+            {selectedType && (
+              <View style={[styles.selTypeBadge, { backgroundColor: reportTypes.find(t=>t.key===selectedType)!.color }]}>
+                <Text style={styles.selTypeBadgeText}>{reportTypes.find(t=>t.key===selectedType)!.label}</Text>
+              </View>
+            )}
           </View>
-          <View style={styles.typeGrid}>
-            {reportTypes.map(t => {
-              const isSel = selectedType === t.key;
-              return (
-                <AnimatedPress key={t.key} onPress={() => setSelectedType(t.key)}
-                  scale={isSel ? 1.03 : 0.97}
-                  style={[styles.typeCard, { borderColor: isSel ? t.color : '#E8EEF4' },
-                    isSel && { backgroundColor: t.bg, borderWidth: 2 }]}
-                >
-                  <View style={[styles.typeIconBg, { backgroundColor: isSel ? t.color : t.color + '22' }]}>
-                    <Icon name={t.icon} size={20} color={isSel ? '#fff' : t.color} strokeWidth={2} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.typeLabel, { color: isSel ? t.color : colors.textPrimary }]}>{t.label}</Text>
-                    <Text style={[styles.typeDesc, { color: isSel ? t.color + 'BB' : colors.textMuted }]}>{t.desc}</Text>
-                  </View>
-                  {isSel && <View style={[styles.selDot, { backgroundColor: t.color }]} />}
-                </AnimatedPress>
-              );
-            })}
+          <View style={styles.typeContainer}>
+            <View style={styles.typeGrid}>
+              {reportTypes.map(t => {
+                const isSel = selectedType === t.key;
+                return (
+                  <AnimatedPress key={t.key} onPress={() => setSelectedType(t.key)}
+                    scale={isSel ? 1.05 : 0.97}
+                    style={[styles.typeChip,
+                      isSel
+                        ? { backgroundColor: t.color, borderColor: t.color }
+                        : { backgroundColor: t.color + '18', borderColor: t.color + '44' }
+                    ]}
+                  >
+                    <View style={[styles.typeChipDot, { backgroundColor: isSel ? 'rgba(255,255,255,0.7)' : t.color }]} />
+                    <Text style={[styles.typeChipLabel, { color: isSel ? '#fff' : t.color }]} numberOfLines={1}>{t.label}</Text>
+                    {isSel && <Icon name="checkCircle" size={13} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />}
+                  </AnimatedPress>
+                );
+              })}
+            </View>
           </View>
 
-          {/* ─ AI Analiz Sonucu (fotoğraf eklendikten sonra) ─ */}
-          {aiResult !== null && (
-            <View style={[styles.aiCard, { borderColor: aiLevels[aiResult].color + '44', backgroundColor: aiLevels[aiResult].bg }]}>
-              <View style={styles.aiHeader}>
-                <View style={[styles.aiIconWrap, { backgroundColor: aiLevels[aiResult].color }]}>
-                  <Icon name="shield" size={16} color="#fff" strokeWidth={2} />
+          {/* ─ AI Analiz Sonucu ─ */}
+          {aiResult !== null && (() => {
+            const level = getSeverityLevel(aiResult.severity);
+            const classLabel = aiResult.damage_class
+              ? (damageClassLabels[aiResult.damage_class] ?? aiResult.damage_class)
+              : 'Tespit Yok';
+            const isAnalyzing = aiResult.status === 'analyzing';
+
+            if (isAnalyzing) {
+              return (
+                <View style={[styles.aiCard, { borderColor: '#CBD5E0', backgroundColor: '#F7FAFC' }]}>
+                  <View style={styles.aiHeader}>
+                    <View style={[styles.aiIconWrap, { backgroundColor: '#718096' }]}>
+                      <ActivityIndicator size="small" color="#fff" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.aiTitle}>AI Hasar Analizi</Text>
+                      <Text style={[styles.aiLevel, { color: '#718096' }]}>Analiz Devam Ediyor...</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.aiNote}>YOLOv8 modeli fotoğrafı işliyor. Sonuç kısa sürede hazır olacak.</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.aiTitle}>AI Hasar Analizi</Text>
-                  <Text style={[styles.aiLevel, { color: aiLevels[aiResult].color }]}>{aiLevels[aiResult].label}</Text>
+              );
+            }
+
+            return (
+              <View style={[styles.aiCard, {
+                borderColor: (level?.color ?? '#718096') + '44',
+                backgroundColor: level?.bg ?? '#F7FAFC',
+              }]}>
+                <View style={styles.aiHeader}>
+                  <View style={[styles.aiIconWrap, { backgroundColor: level?.color ?? '#718096' }]}>
+                    <Icon name="shield" size={16} color="#fff" strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.aiTitle}>AI Hasar Analizi • {classLabel}</Text>
+                    <Text style={[styles.aiLevel, { color: level?.color ?? '#718096' }]}>
+                      {level?.label ?? 'Hasar Tespit Edilmedi'}
+                    </Text>
+                  </View>
+                  {level && (
+                    <View style={[styles.aiBadge, { backgroundColor: level.color }]}>
+                      <Text style={styles.aiBadgeText}>{Math.round(level.bar * 100)}%</Text>
+                    </View>
+                  )}
                 </View>
-                <View style={[styles.aiBadge, { backgroundColor: aiLevels[aiResult].color }]}>
-                  <Text style={styles.aiBadgeText}>{Math.round(aiLevels[aiResult].bar * 100)}%</Text>
-                </View>
+                {level && (
+                  <View style={styles.aiBarBg}>
+                    <View style={[styles.aiBarFill, { width: `${level.bar * 100}%` as any, backgroundColor: level.color }]} />
+                  </View>
+                )}
+                <Text style={styles.aiNote}>YOLOv8 modeli ile analiz tamamlandı. Manuel kontrol önerilir.</Text>
               </View>
-              <View style={styles.aiBarBg}>
-                <View style={[styles.aiBarFill, { width: `${aiLevels[aiResult].bar * 100}%` as any, backgroundColor: aiLevels[aiResult].color }]} />
-              </View>
-              <Text style={styles.aiNote}>Fotoğraf analizi yapay zeka ile gerçekleştirildi. Manuel kontrol önerilir.</Text>
-            </View>
-          )}
+            );
+          })()}
 
           {/* ─ Açıklama ─ */}
           <View style={styles.sectionHeader}>
@@ -222,17 +337,24 @@ export default function ReportScreen() {
           </ScrollView>
 
           {/* ─ Gönder ─ */}
-          <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={styles.submitWrap}>
+          <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={styles.submitWrap} disabled={submitting}>
             <LinearGradient
               colors={selected ? [selected.color, selected.color + 'BB'] : [gradient[0], gradient[2]]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={styles.submitBtn}
+              style={[styles.submitBtn, submitting && { opacity: 0.75 }]}
             >
-              <Icon name="checkCircle" size={22} color="#fff" strokeWidth={2.5} />
-              <Text style={styles.submitText}>Raporu Gönder</Text>
-              <View style={styles.submitArrow}>
-                <Icon name="chevronRight" size={20} color="#fff" strokeWidth={3} />
-              </View>
+              {submitting
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Icon name="checkCircle" size={22} color="#fff" strokeWidth={2.5} />
+              }
+              <Text style={styles.submitText}>
+                {submitting ? 'AI Analiz Ediliyor...' : 'Raporu Gönder'}
+              </Text>
+              {!submitting && (
+                <View style={styles.submitArrow}>
+                  <Icon name="chevronRight" size={20} color="#fff" strokeWidth={3} />
+                </View>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
@@ -291,16 +413,10 @@ const styles = StyleSheet.create({
   locText: { fontSize: 11, color: '#fff', fontWeight: '700' },
 
   card: {
-    flex: 1, backgroundColor: '#F5F7FA',
-    borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 20,
+    flex: 1,
+    backgroundColor: 'transparent',
   },
-  pullHandle: {
-    width: 44, height: 5, borderRadius: 3,
-    backgroundColor: '#D1D9E6', alignSelf: 'center',
-    marginTop: 12, marginBottom: 18,
-  },
-  scrollContent: { paddingHorizontal: 18 },
+  scrollContent: { paddingHorizontal: 18, paddingTop: 20 },
 
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, marginTop: 6 },
   sectionDot: { width: 4, height: 18, borderRadius: 2 },
@@ -311,19 +427,24 @@ const styles = StyleSheet.create({
   },
   photoBadgeText: { fontSize: 12, fontWeight: '800', color: '#4A5568' },
 
-  typeGrid: { gap: 10, marginBottom: 20 },
-  typeCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E8EEF4',
-    borderRadius: 16, paddingHorizontal: 14, paddingVertical: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  typeContainer: {
+    backgroundColor: 'rgba(255,255,255,0.13)',
+    borderRadius: 20, padding: 12, marginBottom: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
   },
-  typeIconBg: {
-    width: 44, height: 44, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  typeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 9,
+    borderRadius: 22, borderWidth: 1.5,
   },
-  typeLabel: { fontSize: 15, fontWeight: '800', color: colors.textPrimary },
-  typeDesc: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  typeChipDot: { width: 7, height: 7, borderRadius: 4 },
+  typeChipLabel: { fontSize: 13, fontWeight: '700' },
+  selTypeBadge: {
+    marginLeft: 'auto' as any,
+    paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20,
+  },
+  selTypeBadgeText: { fontSize: 11, fontWeight: '800', color: '#fff' },
   selDot: { width: 10, height: 10, borderRadius: 5 },
 
   // AI Analiz
@@ -341,8 +462,8 @@ const styles = StyleSheet.create({
   aiNote: { fontSize: 12, color: colors.textMuted, lineHeight: 17 },
 
   textAreaWrap: {
-    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 16,
-    backgroundColor: '#fff', marginBottom: 20,
+    borderWidth: 1.5, borderColor: '#C7D2FE', borderRadius: 16,
+    backgroundColor: '#F0F4FF', marginBottom: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
   },
   textAreaWrapFocused: { borderColor: '#4299E1', backgroundColor: '#fff' },

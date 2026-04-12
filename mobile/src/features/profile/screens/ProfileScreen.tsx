@@ -4,6 +4,7 @@ import {
   Animated, Modal, Platform, StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { showToast } from '../../../shared/components/Toast';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../../core/stores/auth.store';
 import colors from '../../../shared/theme/colors';
@@ -17,6 +18,12 @@ const roleGradients: Record<string, [string, string, string]> = {
   citizen:   ['#1565C0', '#1976D2', '#42A5F5'],
   volunteer: ['#1B5E20', '#2E7D32', '#66BB6A'],
   admin:     ['#4A148C', '#7B1FA2', '#CE93D8'],
+};
+
+const roleBgEnd: Record<string, string> = {
+  citizen:   '#EFF6FF',
+  volunteer: '#F0FDF4',
+  admin:     '#F5F3FF',
 };
 
 const menuItems = [
@@ -37,6 +44,7 @@ export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const [infoModal, setInfoModal] = useState(false);
   const gradient = roleGradients[user?.role ?? 'citizen'] ?? roleGradients.citizen;
+  const bgEnd = roleBgEnd[user?.role ?? 'citizen'] ?? roleBgEnd.citizen;
 
   const email    = user?.email    ?? '';
   const fullName = user?.full_name ?? '';
@@ -65,24 +73,33 @@ export default function ProfileScreen() {
 
   const handleMenuPress = (key: string) => {
     if (key === 'info')     { setInfoModal(true); return; }
-    if (key === 'password') { Alert.alert('Şifre Değiştir', 'Bu özellik yakında aktif olacak.'); return; }
-    if (key === 'notif')    { Alert.alert('Bildirim Ayarları', 'Bu özellik yakında aktif olacak.'); return; }
-    if (key === 'about')    { Alert.alert('AIDEP v1.0.0', 'Acil Durum İşbirliği Platformu\n\nTÜBİTAK 2209-A Projesi'); return; }
+    if (key === 'password') { showToast('Şifre değiştirme özelliği yakında aktif olacak.', 'info'); return; }
+    if (key === 'notif')    { showToast('Bildirim ayarları yakında aktif olacak.', 'info'); return; }
+    if (key === 'about')    { showToast('AIDEP v1.0.0 — Acil Durum İşbirliği Platformu', 'info'); return; }
   };
 
   const handleLogout = () => {
-    Alert.alert('Çıkış Yap', 'Hesabınızdan çıkmak istediğinizden emin misiniz?', [
-      { text: 'İptal', style: 'cancel' },
-      { text: 'Çıkış Yap', style: 'destructive', onPress: logout },
-    ]);
+    Alert.alert(
+      'Çıkış Yap',
+      'Hesabınızdan çıkmak istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        { text: 'Çıkış Yap', style: 'destructive', onPress: logout },
+      ],
+    );
   };
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={[gradient[0], gradient[1], gradient[2], bgEnd]}
+        locations={[0, 0.18, 0.38, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
         {/* Hero */}
-        <LinearGradient colors={gradient} locations={[0, 0.5, 1]} style={styles.hero}>
+        <View style={styles.hero}>
           <FloatingBubbles color="#fff" />
           <View style={[styles.decor, { width: 220, height: 220, top: -60, right: -60 }]} />
           <View style={[styles.decor, { width: 120, height: 120, bottom: 10, left: -40 }]} />
@@ -134,7 +151,7 @@ export default function ProfileScreen() {
               </View>
             ))}
           </Animated.View>
-        </LinearGradient>
+        </View>
 
         {/* Menü */}
         <Animated.View style={[styles.section, {
@@ -226,11 +243,11 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F4F8' },
+  container: { flex: 1 },
   sectionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10, paddingHorizontal: 4 },
   sectionDot: { width: 4, height: 18, borderRadius: 2 },
   decor: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.07)' },
-  hero: { alignItems: 'center', paddingBottom: 28, paddingHorizontal: 24, overflow: 'hidden' },
+  hero: { alignItems: 'center', paddingBottom: 28, paddingHorizontal: 24, overflow: 'hidden', backgroundColor: 'transparent' },
   heroTopRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     width: '100%', paddingBottom: 20,
@@ -275,13 +292,14 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.8)', marginTop: 3 },
   section: { paddingHorizontal: 16, marginTop: 20 },
   sectionLabel: {
-    fontSize: 12, fontWeight: '800', color: colors.textSecondary,
+    fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.85)',
     letterSpacing: 1, textTransform: 'uppercase',
   },
   menuCard: {
-    backgroundColor: '#F5F7FA', borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
     overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)',
   },
   menuItem: {
     flexDirection: 'row', alignItems: 'center',
@@ -299,7 +317,7 @@ const styles = StyleSheet.create({
     shadowColor: '#E53E3E', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
   },
   logoutText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  version: { textAlign: 'center', color: colors.textMuted, fontSize: 11, marginTop: 20, fontWeight: '500' },
+  version: { textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 20, fontWeight: '500' },
 });
 
 const modal = StyleSheet.create({

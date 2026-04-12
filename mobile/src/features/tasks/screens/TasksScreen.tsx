@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '../../../shared/components/Icon';
 import colors from '../../../shared/theme/colors';
 import { useAuthStore } from '../../../core/stores/auth.store';
 import TopBar from '../../../shared/components/TopBar';
 import FloatingBubbles from '../../../shared/components/FloatingBubbles';
+import { showToast } from '../../../shared/components/Toast';
 
 // ─── Citizen ──────────────────────────────────────────────────────────────────
 const infoCards = [
@@ -17,10 +18,9 @@ const infoCards = [
 function CitizenView() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.emptyBox}>
-        <LinearGradient colors={['#EBF8FF', '#F0FFF4']} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient colors={['rgba(25,118,210,0.35)', 'rgba(25,118,210,0.12)']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.emptyBox}>
         <View style={styles.emptyIconWrap}>
-          <Icon name="users" size={40} color="#94A3B8" strokeWidth={1.5} />
+          <Icon name="users" size={40} color="rgba(255,255,255,0.7)" strokeWidth={1.5} />
         </View>
         <Text style={styles.emptyTitle}>Henüz Bir Ekibiniz Yok</Text>
         <Text style={styles.emptyDesc}>
@@ -31,7 +31,7 @@ function CitizenView() {
           <View style={[styles.emptyBadgeDot, { backgroundColor: '#1976D2' }]} />
           <Text style={styles.emptyBadgeText}>Normal Kullanıcı</Text>
         </View>
-      </View>
+      </LinearGradient>
 
       <View style={styles.sectionHeader}>
         <LinearGradient colors={['#1976D2', '#63B3ED']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.sectionDot} />
@@ -39,15 +39,21 @@ function CitizenView() {
       </View>
 
       {infoCards.map((card, i) => (
-        <TouchableOpacity key={i} activeOpacity={0.85} style={styles.infoCard}>
-          <View style={[styles.infoIconWrap, { backgroundColor: card.bg }]}>
-            <Icon name={card.icon} size={24} color={card.color} strokeWidth={2} />
-          </View>
-          <View style={styles.infoText}>
-            <Text style={styles.infoTitle}>{card.title}</Text>
-            <Text style={styles.infoDesc}>{card.desc}</Text>
-          </View>
-          <Icon name="chevronRight" size={18} color={colors.textMuted} />
+        <TouchableOpacity key={i} activeOpacity={0.85}>
+          <LinearGradient
+            colors={[card.color + '50', card.color + '20']}
+            start={{x:0,y:0}} end={{x:1,y:1}}
+            style={styles.infoCard}
+          >
+            <View style={[styles.infoIconWrap, { backgroundColor: card.color + '35' }]}>
+              <Icon name={card.icon} size={24} color="#fff" strokeWidth={2} />
+            </View>
+            <View style={styles.infoText}>
+              <Text style={styles.infoTitle}>{card.title}</Text>
+              <Text style={styles.infoDesc}>{card.desc}</Text>
+            </View>
+            <Icon name="chevronRight" size={18} color="rgba(255,255,255,0.5)" />
+          </LinearGradient>
         </TouchableOpacity>
       ))}
 
@@ -109,29 +115,37 @@ function VolunteerView() {
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
       {/* ── Durum Bildirimi ── */}
-      <View style={styles.sectionHeader}>
-        <LinearGradient colors={['#059669', '#34D399']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.sectionDot} />
-        <Text style={styles.sectionLabel}>DURUMUM</Text>
-      </View>
-      <View style={styles.statusRow}>
-        {myStatuses.map(s => (
-          <TouchableOpacity key={s.key} activeOpacity={0.8} onPress={() => setMyStatus(s.key)}
-            style={[styles.statusChip, { borderColor: s.color, backgroundColor: myStatus === s.key ? s.color : s.bg }]}
-          >
-            <Icon name={s.icon} size={15} color={myStatus === s.key ? '#fff' : s.color} strokeWidth={2} />
-            <Text style={[styles.statusChipText, { color: myStatus === s.key ? '#fff' : s.color }]}>{s.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <LinearGradient colors={['#064E3B', '#065F46']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.statusCard}>
+        <View style={styles.statusCardHeader}>
+          <View style={styles.statusCardIconWrap}>
+            <Icon name="checkCircle" size={18} color="#6EE7B7" strokeWidth={2.5} />
+          </View>
+          <Text style={styles.statusCardTitle}>DURUMUM</Text>
+          <View style={[styles.statusActiveDot, { backgroundColor: myStatuses.find(s=>s.key===myStatus)?.color ?? '#059669' }]} />
+        </View>
+        <View style={styles.statusRow}>
+          {myStatuses.map(s => (
+            <TouchableOpacity key={s.key} activeOpacity={0.8} onPress={() => setMyStatus(s.key)}
+              style={[styles.statusChip, {
+                borderColor: myStatus === s.key ? s.color : 'rgba(255,255,255,0.2)',
+                backgroundColor: myStatus === s.key ? s.color : 'rgba(255,255,255,0.1)',
+              }]}
+            >
+              <Icon name={s.icon} size={15} color={myStatus === s.key ? '#fff' : 'rgba(255,255,255,0.8)'} strokeWidth={2} />
+              <Text style={[styles.statusChipText, { color: myStatus === s.key ? '#fff' : 'rgba(255,255,255,0.8)' }]}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </LinearGradient>
 
       {/* ── Özet istatistik ── */}
       <View style={styles.teamSummaryRow}>
         {[
-          { num: '3', label: 'Aktif Görev', color: '#1976D2' },
-          { num: '4', label: 'Ekip Üyesi', color: '#059669' },
-          { num: '12', label: 'Tamamlanan', color: '#D97706' },
+          { num: '3',  label: 'Aktif Görev', color: '#60A5FA', grad: ['rgba(37,99,235,0.5)', 'rgba(37,99,235,0.2)'] as [string,string] },
+          { num: '4',  label: 'Ekip Üyesi',  color: '#6EE7B7', grad: ['rgba(5,150,105,0.5)', 'rgba(5,150,105,0.2)'] as [string,string] },
+          { num: '12', label: 'Tamamlanan',  color: '#FCD34D', grad: ['rgba(217,119,6,0.5)', 'rgba(217,119,6,0.2)'] as [string,string] },
         ].map((s, i) => (
-          <LinearGradient key={i} colors={[s.color + '18', s.color + '08']} style={[styles.summaryCard, { borderTopColor: s.color }]}>
+          <LinearGradient key={i} colors={s.grad} start={{x:0,y:0}} end={{x:1,y:1}} style={[styles.summaryCard, { borderTopColor: s.color }]}>
             <Text style={[styles.summaryNum, { color: s.color }]}>{s.num}</Text>
             <Text style={styles.summaryLabel}>{s.label}</Text>
           </LinearGradient>
@@ -139,9 +153,9 @@ function VolunteerView() {
       </View>
 
       {/* ── Ekip ── */}
-      <View style={styles.teamNameCard}>
+      <LinearGradient colors={['rgba(5,150,105,0.4)', 'rgba(5,150,105,0.15)']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.teamNameCard}>
         <View style={styles.teamNameLeft}>
-          <View style={[styles.teamDot, { backgroundColor: '#059669' }]} />
+          <View style={[styles.teamDot, { backgroundColor: '#6EE7B7' }]} />
           <View>
             <Text style={styles.teamName}>AKUT Kahramanmaraş</Text>
             <Text style={styles.teamSub}>Arama Kurtarma Ekibi • Aktif</Text>
@@ -150,19 +164,19 @@ function VolunteerView() {
         <TouchableOpacity style={styles.teamDetailBtn} activeOpacity={0.7}>
           <Text style={styles.teamDetailBtnText}>Detay</Text>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {/* ── Kapasite beyanı ── */}
       <View style={styles.sectionHeader}>
         <LinearGradient colors={['#D97706', '#FCD34D']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.sectionDot} />
         <Text style={styles.sectionLabel}>KAPASİTE BEYANI</Text>
       </View>
-      <View style={styles.capacityCard}>
+      <LinearGradient colors={['rgba(217,119,6,0.4)', 'rgba(217,119,6,0.15)']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.capacityCard}>
         <Text style={styles.capacityNote}>Sahaya getirdiğiniz kaynak bilgilerini güncelleyin</Text>
         {resources.map(r => (
           <View key={r.key} style={styles.capacityRow}>
-            <View style={[styles.capacityIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Icon name={r.icon} size={18} color="#D97706" strokeWidth={2} />
+            <View style={[styles.capacityIcon, { backgroundColor: 'rgba(217,119,6,0.35)' }]}>
+              <Icon name={r.icon} size={18} color="#FCD34D" strokeWidth={2} />
             </View>
             <Text style={styles.capacityLabel}>{r.label}</Text>
             <View style={styles.capacityCounter}>
@@ -177,54 +191,65 @@ function VolunteerView() {
           </View>
         ))}
         <TouchableOpacity activeOpacity={0.85} style={styles.capacityBtn}
-          onPress={() => Alert.alert('Güncellendi', 'Kapasite bilgileriniz sisteme iletildi.')}
+          onPress={() => showToast('Kapasite bilgileriniz sisteme iletildi.', 'success')}
         >
           <LinearGradient colors={['#D97706', '#F59E0B']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.capacityBtnGrad}>
             <Icon name="checkCircle" size={18} color="#fff" strokeWidth={2.5} />
             <Text style={styles.capacityBtnText}>Kapasiteyi Güncelle</Text>
           </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {/* ── Görevler ── */}
       <View style={styles.sectionHeader}>
         <LinearGradient colors={['#1976D2', '#60A5FA']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.sectionDot} />
         <Text style={styles.sectionLabel}>GÖREVLER</Text>
       </View>
-      {volunteerTasks.map((task) => (
-        <TouchableOpacity key={task.id} activeOpacity={0.85} style={styles.taskCard}>
-          <View style={styles.taskCardTop}>
-            <View style={styles.taskCardTitleRow}>
-              <View style={[styles.priorityDot, { backgroundColor: priorityColor[task.priority] }]} />
-              <Text style={styles.taskCardTitle} numberOfLines={1}>{task.title}</Text>
+      {volunteerTasks.map((task) => {
+        const sc = statusColor[task.status];
+        return (
+        <TouchableOpacity key={task.id} activeOpacity={0.85}>
+          <LinearGradient colors={[sc + '45', sc + '18']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.taskCard}>
+            <View style={styles.taskCardTop}>
+              <View style={styles.taskCardTitleRow}>
+                <View style={[styles.priorityDot, { backgroundColor: priorityColor[task.priority] }]} />
+                <Text style={styles.taskCardTitle} numberOfLines={1}>{task.title}</Text>
+              </View>
+              <View style={[styles.taskStatusBadge, { backgroundColor: sc + '35' }]}>
+                <Text style={[styles.taskStatusText, { color: '#fff' }]}>{statusLabel[task.status]}</Text>
+              </View>
             </View>
-            <View style={[styles.taskStatusBadge, { backgroundColor: statusColor[task.status] + '20' }]}>
-              <Text style={[styles.taskStatusText, { color: statusColor[task.status] }]}>{statusLabel[task.status]}</Text>
+            <View style={styles.taskCardMeta}>
+              <View style={styles.taskMetaItem}>
+                <Icon name="mapPin" size={13} color="rgba(255,255,255,0.55)" />
+                <Text style={styles.taskMetaText}>{task.location}</Text>
+              </View>
+              <View style={styles.taskMetaItem}>
+                <Icon name="users" size={13} color="rgba(255,255,255,0.55)" />
+                <Text style={styles.taskMetaText}>{task.assigned}</Text>
+              </View>
             </View>
-          </View>
-          <View style={styles.taskCardMeta}>
-            <View style={styles.taskMetaItem}>
-              <Icon name="mapPin" size={13} color={colors.textMuted} />
-              <Text style={styles.taskMetaText}>{task.location}</Text>
-            </View>
-            <View style={styles.taskMetaItem}>
-              <Icon name="users" size={13} color={colors.textMuted} />
-              <Text style={styles.taskMetaText}>{task.assigned}</Text>
-            </View>
-          </View>
-          <Text style={styles.taskTime}>{task.time}</Text>
+            <Text style={styles.taskTime}>{task.time}</Text>
+          </LinearGradient>
         </TouchableOpacity>
-      ))}
+        );
+      })}
 
       {/* ── Ekip üyeleri ── */}
       <View style={[styles.sectionHeader, { marginTop: 8 }]}>
         <LinearGradient colors={['#6B46C1', '#A78BFA']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.sectionDot} />
         <Text style={styles.sectionLabel}>EKİP ÜYELERİ</Text>
       </View>
-      {volunteerMembers.map((m, i) => (
-        <View key={i} style={styles.memberCard}>
-          <View style={[styles.memberAvatar, { backgroundColor: m.status === 'active' ? '#DBEAFE' : '#FEF3C7' }]}>
-            <Text style={[styles.memberAvatarText, { color: m.status === 'active' ? '#1976D2' : '#D97706' }]}>
+      {volunteerMembers.map((m, i) => {
+        const isActive = m.status === 'active';
+        return (
+        <LinearGradient key={i}
+          colors={isActive ? ['rgba(25,118,210,0.4)','rgba(25,118,210,0.15)'] : ['rgba(217,119,6,0.35)','rgba(217,119,6,0.12)']}
+          start={{x:0,y:0}} end={{x:1,y:1}}
+          style={styles.memberCard}
+        >
+          <View style={[styles.memberAvatar, { backgroundColor: isActive ? 'rgba(37,99,235,0.4)' : 'rgba(217,119,6,0.4)' }]}>
+            <Text style={[styles.memberAvatarText, { color: '#fff' }]}>
               {m.name.split(' ').map(n => n[0]).join('')}
             </Text>
           </View>
@@ -232,14 +257,13 @@ function VolunteerView() {
             <Text style={styles.memberName}>{m.name}</Text>
             <Text style={styles.memberRole}>{m.role}</Text>
           </View>
-          <View style={[styles.memberStatusPill, { backgroundColor: m.status === 'active' ? '#ECFDF5' : '#FEF3C7' }]}>
-            <View style={[styles.memberStatusDot, { backgroundColor: m.status === 'active' ? '#059669' : '#D97706' }]} />
-            <Text style={[styles.memberStatusText, { color: m.status === 'active' ? '#059669' : '#D97706' }]}>
-              {m.status === 'active' ? 'Aktif' : 'Uzakta'}
-            </Text>
+          <View style={styles.memberStatusPill}>
+            <View style={[styles.memberStatusDot, { backgroundColor: isActive ? '#6EE7B7' : '#FCD34D' }]} />
+            <Text style={styles.memberStatusText}>{isActive ? 'Aktif' : 'Uzakta'}</Text>
           </View>
-        </View>
-      ))}
+        </LinearGradient>
+        );
+      })}
 
       <View style={{ height: 110 }} />
     </ScrollView>
@@ -255,10 +279,10 @@ const adminTeams = [
 ];
 
 const adminStats = [
-  { label: 'Toplam Ekip', value: '4',  color: '#1976D2', bg: '#EFF6FF', icon: 'users'       as const },
-  { label: 'Aktif Görev', value: '18', color: '#059669', bg: '#ECFDF5', icon: 'checkCircle' as const },
-  { label: 'Toplam Üye',  value: '73', color: '#D97706', bg: '#FEF3C7', icon: 'user'        as const },
-  { label: 'Bölge',       value: '6',  color: '#7C3AED', bg: '#EDE9FE', icon: 'mapPin'      as const },
+  { label: 'Toplam Ekip', value: '4',  color: '#60A5FA', iconBg: 'rgba(25,118,210,0.35)',  icon: 'users'       as const },
+  { label: 'Aktif Görev', value: '18', color: '#6EE7B7', iconBg: 'rgba(5,150,105,0.35)',   icon: 'checkCircle' as const },
+  { label: 'Toplam Üye',  value: '73', color: '#FCD34D', iconBg: 'rgba(217,119,6,0.35)',   icon: 'user'        as const },
+  { label: 'Bölge',       value: '6',  color: '#C4B5FD', iconBg: 'rgba(124,58,237,0.35)',  icon: 'mapPin'      as const },
 ];
 
 function AdminView() {
@@ -266,27 +290,26 @@ function AdminView() {
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
       <View style={styles.adminStatsGrid}>
         {adminStats.map((s, i) => (
-          <LinearGradient key={i} colors={[s.color + '18', s.color + '08']}
-            style={[styles.adminStatCard, { borderLeftColor: s.color }]}>
-            <View style={[styles.adminStatIconWrap, { backgroundColor: s.bg }]}>
+          <View key={i} style={[styles.adminStatCard, { borderLeftColor: s.color }]}>
+            <View style={[styles.adminStatIconWrap, { backgroundColor: s.iconBg }]}>
               <Icon name={s.icon} size={20} color={s.color} strokeWidth={2} />
             </View>
             <Text style={[styles.adminStatNum, { color: s.color }]}>{s.value}</Text>
             <Text style={styles.adminStatLabel}>{s.label}</Text>
-          </LinearGradient>
+          </View>
         ))}
       </View>
 
       <View style={styles.adminActionRow}>
         <TouchableOpacity activeOpacity={0.85} style={styles.adminActionBtn}
-          onPress={() => Alert.alert('Acil Alarm', 'Tüm ekiplere acil alarm gönderildi!')}>
+          onPress={() => showToast('Tüm ekiplere acil alarm gönderildi!', 'error')}>
           <LinearGradient colors={['#DC2626', '#EF4444']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.adminActionGrad}>
             <Icon name="alertTriangle" size={18} color="#fff" strokeWidth={2.5} />
             <Text style={styles.adminActionText}>Acil Alarm</Text>
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity activeOpacity={0.85} style={styles.adminActionBtn}
-          onPress={() => Alert.alert('Ekip Ata', 'Ekip atama ekranı yakında aktif olacak.')}>
+          onPress={() => showToast('Ekip atama ekranı yakında aktif olacak.', 'info')}>
           <LinearGradient colors={['#1565C0', '#1976D2']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.adminActionGrad}>
             <Icon name="users" size={18} color="#fff" strokeWidth={2.5} />
             <Text style={styles.adminActionText}>Ekip Ata</Text>
@@ -312,7 +335,7 @@ function AdminView() {
               <Icon name="users" size={12} color="#64748B} " />
               <Text style={styles.adminTeamBadgeText}>{team.members}</Text>
             </View>
-            <View style={[styles.adminTeamBadge, { backgroundColor: '#EFF6FF' }]}>
+            <View style={styles.adminTeamBadge}>
               <Icon name="checkCircle" size={12} color="#1976D2" />
               <Text style={[styles.adminTeamBadgeText, { color: '#1976D2' }]}>{team.tasks} görev</Text>
             </View>
@@ -321,7 +344,7 @@ function AdminView() {
       ))}
 
       <TouchableOpacity activeOpacity={0.85} style={styles.addTeamBtn}
-        onPress={() => Alert.alert('Yeni Ekip', 'Ekip oluşturma özelliği yakında aktif olacak.')}>
+        onPress={() => showToast('Ekip oluşturma özelliği yakında aktif olacak.', 'info')}>
         <Icon name="users" size={20} color="#1976D2" strokeWidth={2} />
         <Text style={styles.addTeamBtnText}>Yeni Ekip Oluştur</Text>
         <Icon name="chevronRight" size={18} color="#1976D2" />
@@ -333,6 +356,12 @@ function AdminView() {
 }
 
 // ─── Ana ekran ────────────────────────────────────────────────────────────────
+const cardBg: Record<string, string> = {
+  citizen:   '#1565C0',
+  volunteer: '#1B5E20',
+  admin:     '#4A148C',
+};
+
 const roleConfig: Record<string, { gradient: [string, string, string]; heroSub: string; badge: string; badgeColor: string }> = {
   citizen:   { gradient: ['#1565C0', '#1976D2', '#2196F3'], heroSub: 'Ekip yönetimi ve görev koordinasyonu',   badge: 'Normal Kullanıcı',  badgeColor: '#1976D2' },
   volunteer: { gradient: ['#1B5E20', '#2E7D32', '#43A047'], heroSub: 'Saha görevleri ve ekip koordinasyonu',   badge: 'STK Gönüllüsü',     badgeColor: '#059669' },
@@ -346,7 +375,12 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={cfg.gradient} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFillObject} />
+      {/* Gradient tüm ekranı kaplar */}
+      <LinearGradient
+        colors={[cfg.gradient[0], cfg.gradient[1], cfg.gradient[2], cardBg[role] ?? cardBg.citizen]}
+        locations={[0, 0.25, 0.45, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
       <FloatingBubbles />
 
       {/* Hero */}
@@ -367,9 +401,8 @@ export default function TasksScreen() {
         </View>
       </View>
 
-      {/* Kart alanı */}
+      {/* İçerik — gradient üzerinde şeffaf */}
       <View style={styles.cardArea}>
-        <View style={styles.pullHandle} />
         {role === 'citizen'   && <CitizenView />}
         {role === 'volunteer' && <VolunteerView />}
         {role === 'admin'     && <AdminView />}
@@ -403,48 +436,43 @@ const styles = StyleSheet.create({
   heroBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
 
   cardArea: {
-    flex: 1, backgroundColor: '#F5F7FA',
-    borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 20,
+    flex: 1,
+    backgroundColor: 'transparent',
   },
-  pullHandle: {
-    width: 44, height: 5, borderRadius: 3,
-    backgroundColor: '#D1D9E6', alignSelf: 'center',
-    marginTop: 12, marginBottom: 18,
-  },
-  scrollContent: { paddingHorizontal: 18 },
+  scrollContent: { paddingHorizontal: 18, paddingTop: 20 },
 
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, marginTop: 6 },
   sectionDot: { width: 4, height: 18, borderRadius: 2 },
-  sectionLabel: { fontSize: 12, fontWeight: '900', color: '#4A5568', letterSpacing: 1.2 },
+  sectionLabel: { fontSize: 12, fontWeight: '900', color: 'rgba(255,255,255,0.85)', letterSpacing: 1.2 },
 
   // Citizen
   emptyBox: {
     borderRadius: 24, padding: 26, alignItems: 'center', marginBottom: 24,
-    borderWidth: 1.5, borderColor: '#BFDBFE', overflow: 'hidden',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)', overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   emptyIconWrap: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
-  emptyTitle: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: 10, textAlign: 'center' },
-  emptyDesc: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 18 },
+  emptyTitle: { fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 10, textAlign: 'center' },
+  emptyDesc: { fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 22, marginBottom: 18 },
   emptyBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#DBEAFE', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
   },
   emptyBadgeDot: { width: 8, height: 8, borderRadius: 4 },
-  emptyBadgeText: { fontSize: 13, fontWeight: '800', color: '#1E40AF' },
+  emptyBadgeText: { fontSize: 13, fontWeight: '800', color: '#fff' },
   infoCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 10,
-    borderWidth: 1, borderColor: '#E2E8F0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: 16, marginBottom: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   infoIconWrap: { width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   infoText: { flex: 1 },
-  infoTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 3 },
-  infoDesc: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
+  infoTitle: { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 3 },
+  infoDesc: { fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 18 },
   reportWrapper: { marginTop: 8 },
   reportBtn: {
     flexDirection: 'row', alignItems: 'center',
@@ -459,12 +487,23 @@ const styles = StyleSheet.create({
   },
 
   // Volunteer - durum
-  statusRow: { flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
+  statusCard: {
+    borderRadius: 20, padding: 16, marginBottom: 20,
+    shadowColor: '#059669', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 6,
+  },
+  statusCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  statusCardIconWrap: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: 'rgba(110,231,183,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  statusCardTitle: { flex: 1, fontSize: 13, fontWeight: '900', color: '#6EE7B7', letterSpacing: 1.2 },
+  statusActiveDot: { width: 10, height: 10, borderRadius: 5 },
+  statusRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   statusChip: {
     flexDirection: 'row', alignItems: 'center', gap: 7,
     paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20,
     borderWidth: 1.5, flex: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
   },
   statusChipText: { fontSize: 13, fontWeight: '800' },
 
@@ -472,42 +511,41 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1, borderRadius: 16, padding: 14, alignItems: 'center',
     borderTopWidth: 3, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   summaryNum: { fontSize: 28, fontWeight: '900' },
-  summaryLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: '600', marginTop: 3 },
+  summaryLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginTop: 3 },
 
   teamNameCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 20,
-    borderWidth: 1, borderColor: '#E2E8F0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: 16, marginBottom: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   teamNameLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   teamDot: { width: 12, height: 12, borderRadius: 6 },
-  teamName: { fontSize: 15, fontWeight: '800', color: colors.textPrimary },
-  teamSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  teamDetailBtn: { backgroundColor: '#DBEAFE', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
-  teamDetailBtnText: { fontSize: 13, fontWeight: '700', color: '#1976D2' },
+  teamName: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  teamSub: { fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+  teamDetailBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  teamDetailBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   // Kapasite
   capacityCard: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 20,
-    borderWidth: 1, borderColor: '#FDE68A',
-    shadowColor: '#D97706', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: 16, marginBottom: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
-  capacityNote: { fontSize: 13, color: colors.textSecondary, marginBottom: 14 },
+  capacityNote: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 14 },
   capacityRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   capacityIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  capacityLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  capacityLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: '#fff' },
   capacityCounter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   counterBtn: {
     width: 32, height: 32, borderRadius: 10,
-    backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#FDE68A',
+    backgroundColor: 'rgba(217,119,6,0.35)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(252,211,77,0.5)',
   },
-  counterBtnText: { fontSize: 20, fontWeight: '700', color: '#D97706', lineHeight: 24 },
-  counterVal: { fontSize: 15, fontWeight: '800', color: colors.textPrimary, minWidth: 60, textAlign: 'center' },
+  counterBtnText: { fontSize: 20, fontWeight: '700', color: '#FCD34D', lineHeight: 24 },
+  counterVal: { fontSize: 15, fontWeight: '800', color: '#fff', minWidth: 60, textAlign: 'center' },
   capacityBtn: { marginTop: 4 },
   capacityBtnGrad: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -516,26 +554,24 @@ const styles = StyleSheet.create({
   capacityBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
 
   taskCard: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 10,
-    borderWidth: 1, borderColor: '#E2E8F0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: 16, marginBottom: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   taskCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   taskCardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   priorityDot: { width: 10, height: 10, borderRadius: 5 },
-  taskCardTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, flex: 1 },
+  taskCardTitle: { fontSize: 15, fontWeight: '700', color: '#fff', flex: 1 },
   taskStatusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
   taskStatusText: { fontSize: 12, fontWeight: '800' },
   taskCardMeta: { flexDirection: 'row', gap: 16, marginBottom: 6 },
   taskMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  taskMetaText: { fontSize: 13, color: colors.textSecondary },
-  taskTime: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  taskMetaText: { fontSize: 13, color: 'rgba(255,255,255,0.65)' },
+  taskTime: { fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: '600' },
 
   memberCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 8,
-    borderWidth: 1, borderColor: '#E2E8F0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   memberAvatar: {
     width: 46, height: 46, borderRadius: 23,
@@ -543,25 +579,26 @@ const styles = StyleSheet.create({
   },
   memberAvatarText: { fontSize: 15, fontWeight: '900' },
   memberInfo: { flex: 1 },
-  memberName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  memberRole: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  memberName: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  memberRole: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
   memberStatusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   memberStatusDot: { width: 8, height: 8, borderRadius: 4 },
-  memberStatusText: { fontSize: 12, fontWeight: '700' },
+  memberStatusText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 
   // Admin
-  adminStatsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18 },
+  adminStatsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18, marginTop: 4 },
   adminStatCard: {
     width: '47%', borderRadius: 18, padding: 16, borderLeftWidth: 3, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   adminStatIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   adminStatNum: { fontSize: 30, fontWeight: '900' },
-  adminStatLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '600', marginTop: 3 },
-  adminActionRow: { flexDirection: 'row', gap: 10, marginBottom: 22 },
+  adminStatLabel: { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginTop: 3 },
+  adminActionRow: { flexDirection: 'row', gap: 10, marginBottom: 22, marginTop: 4 },
   adminActionBtn: { flex: 1 },
   adminActionGrad: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -571,24 +608,24 @@ const styles = StyleSheet.create({
   adminActionText: { color: '#fff', fontSize: 15, fontWeight: '800' },
   adminTeamCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 10,
-    borderWidth: 1, borderColor: '#E2E8F0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: 16, marginBottom: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   adminTeamLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   adminTeamDot: { width: 12, height: 12, borderRadius: 6 },
-  adminTeamName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  adminTeamType: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  adminTeamName: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  adminTeamType: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
   adminTeamRight: { flexDirection: 'row', gap: 6 },
   adminTeamBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
   },
-  adminTeamBadgeText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  adminTeamBadgeText: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)' },
   addTeamBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#EFF6FF', borderRadius: 18, padding: 16, marginTop: 6,
-    borderWidth: 1.5, borderColor: '#BFDBFE', borderStyle: 'dashed',
+    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 18, padding: 16, marginTop: 6,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)', borderStyle: 'dashed',
   },
-  addTeamBtnText: { flex: 1, fontSize: 15, fontWeight: '700', color: '#1976D2' },
+  addTeamBtnText: { flex: 1, fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.85)' },
 });

@@ -170,7 +170,7 @@ const RegisterScreen = () => {
     { key: 'email',   label: 'E-posta',            placeholder: 'ornek@email.com',        icon: 'mail'    as const, keyboard: 'email-address' as const },
     { key: 'tc',      label: 'TC Kimlik No',       placeholder: '11 haneli TC kimlik no', icon: 'lock'    as const, keyboard: 'number-pad'    as const },
     { key: 'adres',   label: 'Adres Bilgileri',    placeholder: 'İl, İlçe, Mahalle...',   icon: 'mapPin'  as const, keyboard: 'default'       as const },
-    { key: 'sifre',   label: 'Şifre',              placeholder: 'En az 6 karakter',       icon: 'lock'    as const, keyboard: 'default'       as const, secure: true },
+    { key: 'sifre',   label: 'Şifre',              placeholder: 'En az 8 karakter',       icon: 'lock'    as const, keyboard: 'default'       as const, secure: true },
     { key: 'sifreTekrar', label: 'Şifre Tekrar',  placeholder: 'Şifrenizi tekrar girin', icon: 'lock'    as const, keyboard: 'default'       as const, secure: true },
   ];
 
