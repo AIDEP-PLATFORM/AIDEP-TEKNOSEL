@@ -17,6 +17,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import colors from '../../../shared/theme/colors';
 import Icon from '../../../shared/components/Icon';
 import { authService } from '../services/auth.service';
+import { useAuthStore } from '../../../core/stores/auth.store';
 
 const roleConfig: Record<string, {
   title: string;
@@ -42,6 +43,7 @@ const countryCodes = [
 const RegisterScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { setUser } = useAuthStore();
   const role: string = route.params?.role ?? 'normal';
   const cfg = roleConfig[role] ?? roleConfig.normal;
 
@@ -95,18 +97,22 @@ const RegisterScreen = () => {
       Alert.alert('Hata', 'Lütfen geçerli bir telefon numarası giriniz.'); return;
     }
 
-    if (sifre.length < 6) {
-      Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır.'); return;
+    if (sifre.length < 8) {
+      Alert.alert('Hata', 'Şifre en az 8 karakter olmalıdır.'); return;
     }
 
     if (sifre !== sifreTekrar) {
       Alert.alert('Hata', 'Şifreler birbiriyle eşleşmiyor. Lütfen kontrol ediniz.'); return;
     }
 
+    const roleMap: Record<string, string> = { normal: 'citizen', stk: 'volunteer', yetkili: 'admin' };
+
     const err = await authService.register(email, sifre, {
       full_name: adSoyad,
       phone: `${countryCode.code}${telefon}`,
+      tc_no: tc,
       city: adres,
+      role: roleMap[role] ?? 'citizen',
     });
 
     if (err) {
@@ -115,9 +121,7 @@ const RegisterScreen = () => {
     }
 
     if (role === 'normal') {
-      Alert.alert('Başarılı', 'Hesabınız oluşturuldu.', [
-        { text: 'Giriş Yap', onPress: () => navigation.navigate('Login') },
-      ]);
+      navigation.navigate('Login');
     } else {
       navigation.navigate('RegisterStep2', { role, step1: form });
     }

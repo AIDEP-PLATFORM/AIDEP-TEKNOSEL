@@ -1,36 +1,35 @@
 import { create } from 'zustand';
-import { Session } from '@supabase/supabase-js';
-import { supabase } from '../api/supabaseClient';
-import { authService } from '../../features/auth/services/auth.service';
+import { authService, User } from '../../features/auth/services/auth.service';
 
 interface AuthState {
-  session: Session | null;
+  user: User | null;
+  isLoggedIn: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
-  setSession: (session: Session | null) => void;
+  setUser: (user: User | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  session: null,
+  user: null,
+  isLoggedIn: false,
   loading: false,
 
   login: async (email, password) => {
     set({ loading: true });
     const error = await authService.login(email, password);
+    if (!error) {
+      const user = await authService.getUser();
+      set({ user, isLoggedIn: true });
+    }
     set({ loading: false });
     return error;
   },
 
   logout: async () => {
     await authService.logout();
-    set({ session: null });
+    set({ user: null, isLoggedIn: false });
   },
 
-  setSession: (session) => set({ session }),
+  setUser: (user) => set({ user, isLoggedIn: !!user }),
 }));
-
-// Supabase auth state değişikliklerini dinle
-supabase.auth.onAuthStateChange((_event, session) => {
-  useAuthStore.getState().setSession(session);
-});

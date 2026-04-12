@@ -1,154 +1,140 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Image, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, Text, Animated } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapScreen from '../../features/map/screens/MapScreen';
 import ReportScreen from '../../features/report/screens/ReportScreen';
 import TasksScreen from '../../features/tasks/screens/TasksScreen';
 import ProfileScreen from '../../features/profile/screens/ProfileScreen';
 import Icon from '../../shared/components/Icon';
-import colors from '../../shared/theme/colors';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const HeaderBackground = () => (
-  <LinearGradient
-    colors={['#1565C0', '#1976D2', '#42A5F5']}
-    start={{ x: 0, y: 0 }}
-    end={{ x: 0, y: 1 }}
-    style={StyleSheet.absoluteFillObject}
-  />
-);
+// ─── Custom Floating Tab Bar ──────────────────────────────────────────────────
 
-const HeaderTitle = () => {
-  const navigation = useNavigation<any>();
+const TAB_CONFIG = [
+  { name: 'Raporla', icon: 'alertTriangle' as const, label: 'Raporla', color: '#EF4444' },
+  { name: 'Harita',  icon: 'mapPin'        as const, label: 'Harita',  color: '#1976D2' },
+  { name: 'Ekibim',  icon: 'users'         as const, label: 'Ekibim',  color: '#059669' },
+];
+
+function TabBar({ state, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+  const anims = useRef(TAB_CONFIG.map((_, i) => new Animated.Value(i === 0 ? 1 : 0))).current;
+
+  const handlePress = (index: number, routeName: string) => {
+    // Animate all tabs
+    anims.forEach((anim, i) => {
+      Animated.spring(anim, {
+        toValue: i === index ? 1 : 0,
+        useNativeDriver: true,
+        speed: 30,
+        bounciness: 8,
+      }).start();
+    });
+    navigation.navigate(routeName);
+  };
+
   return (
-    <View style={header.wrap}>
-      <View style={header.logoRow}>
-        <View style={header.logoWrap}>
-          <Image source={require('../../../assets/logo.png')} style={header.logo} resizeMode="contain" />
-        </View>
-        <Text style={header.logoText}>AIDEP</Text>
+    <View style={[tabBar.outer, { paddingBottom: insets.bottom + 8 }]}>
+      <View style={tabBar.container}>
+        {TAB_CONFIG.map((tab, index) => {
+          const focused = state.index === index;
+          const scale = anims[index].interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+          const iconY  = anims[index].interpolate({ inputRange: [0, 1], outputRange: [0, -2] });
+
+          return (
+            <TouchableOpacity
+              key={tab.name}
+              onPress={() => handlePress(index, tab.name)}
+              activeOpacity={0.8}
+              style={tabBar.tab}
+            >
+              <Animated.View style={[tabBar.tabInner, { transform: [{ scale }, { translateY: iconY }] }]}>
+                {focused && (
+                  <Animated.View style={[tabBar.activePill, { backgroundColor: tab.color + '18' }]} />
+                )}
+                <Icon
+                  name={tab.icon}
+                  size={focused ? 22 : 20}
+                  color={focused ? tab.color : '#94A3B8'}
+                  strokeWidth={focused ? 2.5 : 1.8}
+                />
+                <Text style={[tabBar.label, { color: focused ? tab.color : '#94A3B8', fontWeight: focused ? '800' : '500' }]}>
+                  {tab.label}
+                </Text>
+              </Animated.View>
+            </TouchableOpacity>
+          );
+        })}
       </View>
-      <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.7}>
-        <View style={header.profileIconWrap}>
-          <Icon name="user" size={18} color="#fff" strokeWidth={2.5} />
-        </View>
-      </TouchableOpacity>
     </View>
   );
-};
+}
 
-const header = StyleSheet.create({
-  wrap: {
+const tabBar = StyleSheet.create({
+  outer: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    paddingHorizontal: 20,
+    backgroundColor: 'transparent',
+  },
+  container: {
     flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    shadowColor: '#1565C0',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+  },
+  tab: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 6,
-    backgroundColor: 'transparent',
+    justifyContent: 'center',
   },
-  logoRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 8,
-    backgroundColor: 'transparent',
+  tabInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    position: 'relative',
   },
-  logoWrap: {
-    width: 36, height: 36, borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  activePill: {
+    position: 'absolute',
+    top: 0, bottom: 0, left: 0, right: 0,
+    borderRadius: 20,
   },
-  logo: { width: 36, height: 36 },
-  logoText: { fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: 2 },
-  profileIconWrap: {
-    width: 38, height: 38, borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  label: {
+    fontSize: 10,
+    marginTop: 3,
+    letterSpacing: 0.3,
   },
 });
+
+// ─── Tab Navigator ────────────────────────────────────────────────────────────
 
 const TabNavigator = () => (
   <Tab.Navigator
-    screenOptions={{
-      headerBackground: () => <HeaderBackground />,
-      headerTitle: () => <HeaderTitle />,
-      headerTitleContainerStyle: { left: 0, right: 0 },
-      headerTitleAlign: 'left',
-      headerStyle: { 
-        backgroundColor: 'transparent',
-        elevation: 0, 
-        shadowOpacity: 0, 
-        height: 70 
-      },
-      headerShadowVisible: false,
-      tabBarStyle: {
-        backgroundColor: colors.white,
-        borderTopWidth: 0,
-        height: 70,
-        paddingBottom: 12,
-        paddingTop: 8,
-        position: 'absolute',
-        bottom: 0, left: 0, right: 0,
-        elevation: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
-      },
-      tabBarActiveTintColor: '#1976D2',
-      tabBarInactiveTintColor: colors.textMuted,
-      tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 2 },
-    }}
+    tabBar={(props) => <TabBar {...props} />}
+    screenOptions={{ headerShown: false }}
   >
-    <Tab.Screen
-      name="Raporla"
-      component={ReportScreen}
-      options={{
-        tabBarIcon: ({ focused }) => (
-          <View style={[tabStyles.iconWrap, focused && tabStyles.activeIconWrap]}>
-            <Icon name="alertTriangle" size={focused ? 22 : 20} color={focused ? '#1976D2' : colors.textMuted} strokeWidth={focused ? 2.5 : 2} />
-          </View>
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="Harita"
-      component={MapScreen}
-      options={{
-        tabBarIcon: ({ focused }) => (
-          <View style={[tabStyles.iconWrap, focused && tabStyles.activeIconWrap]}>
-            <Icon name="mapPin" size={focused ? 22 : 20} color={focused ? '#1976D2' : colors.textMuted} strokeWidth={focused ? 2.5 : 2} />
-          </View>
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="Ekibim"
-      component={TasksScreen}
-      options={{
-        tabBarIcon: ({ focused }) => (
-          <View style={[tabStyles.iconWrap, focused && tabStyles.activeIconWrap]}>
-            <Icon name="users" size={focused ? 22 : 20} color={focused ? '#1976D2' : colors.textMuted} strokeWidth={focused ? 2.5 : 2} />
-          </View>
-        ),
-      }}
-    />
+    <Tab.Screen name="Raporla" component={ReportScreen} />
+    <Tab.Screen name="Harita"  component={MapScreen}    />
+    <Tab.Screen name="Ekibim"  component={TasksScreen}  />
   </Tab.Navigator>
 );
 
-const tabStyles = StyleSheet.create({
-  iconWrap: {
-    width: 40, height: 40,
-    alignItems: 'center', justifyContent: 'center',
-    borderRadius: 20,
-  },
-  activeIconWrap: { backgroundColor: '#EBF8FF' },
-});
+// ─── Root Navigator ───────────────────────────────────────────────────────────
 
 const AppNavigator = () => (
   <Stack.Navigator>
@@ -156,13 +142,7 @@ const AppNavigator = () => (
     <Stack.Screen
       name="Profile"
       component={ProfileScreen}
-      options={{
-        headerTitle: 'Profilim',
-        headerBackground: () => <HeaderBackground />,
-        headerTitleStyle: { fontWeight: '800', fontSize: 18, color: '#fff' },
-        headerTintColor: '#fff',
-        headerShadowVisible: false,
-      }}
+      options={{ headerShown: false }}
     />
   </Stack.Navigator>
 );
