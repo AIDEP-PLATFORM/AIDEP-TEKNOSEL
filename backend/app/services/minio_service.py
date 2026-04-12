@@ -16,8 +16,8 @@ def get_minio_client() -> Minio:
         endpoint = settings.MINIO_ENDPOINT.replace("http://", "").replace("https://", "")
         _minio_client = Minio(
             endpoint,
-            access_key=settings.MINIO_API_ACCESS_KEY,
-            secret_key=settings.MINIO_API_SECRET_KEY,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
             secure=False,  # Local geliştirmede SSL yok
         )
     return _minio_client
@@ -51,4 +51,6 @@ async def upload_photo(file_bytes: bytes, content_type: str = "image/jpeg") -> s
         content_type=content_type,
     )
 
-    return f"http://{settings.MINIO_ENDPOINT}/{bucket}/{file_name}"
+    # MINIO_ENDPOINT Docker içinde "minio:9000" — dışarıdan erişim için "localhost:9000" kullan
+    public_endpoint = settings.MINIO_ENDPOINT.replace("minio:", "localhost:")
+    return f"http://{public_endpoint}/{bucket}/{file_name}"
