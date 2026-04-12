@@ -7,6 +7,7 @@ from app.models.volunteer import Volunteer
 from app.models.route import Route
 from app.models.earthquake import Earthquake
 from app.models.audit_log import AuditLog
+from app.models.team import Team
 
 # Import all models here so Alembic autogenerate can detect them
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "Request",
     "DamageReport",
     "Volunteer",
+    "Team",
     "Route",
     "Earthquake",
     "AuditLog",

@@ -12,12 +12,15 @@ class Volunteer(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     
-    skills = Column(ARRAY(String), nullable=False, default=[]) # ARRAY(String) → PostgreSQL'e özgü dizi tipi. Tek kolonda birden fazla değer tutulur, default=[] → Başlangıçta boş liste, gönüllü sonradan becerilerini ekler, Greedy algoritması gönüllü atarken "arama kurtarma bilen gönüllüleri getir" diye bu kolona bakacak
-    
-    current_location = Column(Geography(geometry_type='POINT', srid=4326, spatial_index=False), nullable=True) #Gönüllünün anlık veya son bilinen konumu. nullable=True
-    
-    is_available = Column(Boolean, nullable=False, default=True) # Gönüllü şu an görev alabilir mi? True/False. Greedy algoritması sadece True olanları değerlendirir
-    status = Column(String(50), nullable=False, default="active") # status → Gönüllünün genel durumu, active → Sistemde aktif, görev alabilir, on_mission → Şu an bir görevde, inactive → Sistemden ayrılmış
+    skills = Column(ARRAY(String), nullable=False, default=[])  # ["arama_kurtarma", "ilk_yardim", "surucu"]
+
+    # Hangi ekibe üye (nullable — henüz ekibe atanmamış olabilir)
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    current_location = Column(Geography(geometry_type='POINT', srid=4326, spatial_index=False), nullable=True)
+
+    is_available = Column(Boolean, nullable=False, default=True)
+    status = Column(String(50), nullable=False, default="active")  # active | on_mission | inactive
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
