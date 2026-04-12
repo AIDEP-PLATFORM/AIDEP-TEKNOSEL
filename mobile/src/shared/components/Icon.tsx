@@ -15,6 +15,9 @@ const icons = {
   chevronRight: (color: string, sw: number) => (
     <Path d="M9 18l6-6-6-6" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />
   ),
+  chevronDown: (color: string, sw: number) => (
+    <Path d="M6 9l6 6 6-6" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />
+  ),
   close: (color: string, sw: number) => (
     <G>
       <Line x1="18" y1="6" x2="6" y2="18" stroke={color} strokeWidth={sw} strokeLinecap="round" />

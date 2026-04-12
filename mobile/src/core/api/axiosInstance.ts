@@ -1,29 +1,27 @@
 import axios from 'axios';
-import { supabase } from './supabaseClient';
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8000';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000',
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Her istekte Supabase JWT'yi header'a ekle
+// Her istekte access_token ekle
 api.interceptors.request.use(async (config) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
+  const token = await AsyncStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// 401 gelirse session temizle
+// 401 gelirse token temizle
 api.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   async (error) => {
     if (error.response?.status === 401) {
-      await supabase.auth.signOut();
+      await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
     }
     return Promise.reject(error);
   }

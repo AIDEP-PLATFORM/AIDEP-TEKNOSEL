@@ -1,80 +1,92 @@
-import { supabase } from '../../../core/api/supabaseClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../../core/api/axiosInstance';
 
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  tc_no: string;
+  city?: string;
+  role: string;
+  organization?: string;
+}
+
 export const authService = {
+  // Giriş yap
   async login(email: string, password: string): Promise<string | null> {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.log('Login error:', error.message, error.status);
-      return error.message;
+    try {
+      const res = await api.post('/api/v1/auth/login', { email, password });
+      const { access_token, refresh_token } = res.data;
+      await AsyncStorage.setItem('access_token', access_token);
+      await AsyncStorage.setItem('refresh_token', refresh_token);
+      // Kullanıcı bilgilerini çek
+      const me = await api.get('/api/v1/auth/me');
+      await AsyncStorage.setItem('user', JSON.stringify(me.data));
+      return null;
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail;
+      if (msg === 'Invalid credentials') return 'E-posta veya şifre hatalı.';
+      if (msg === 'User not found') return 'Bu e-posta ile kayıtlı kullanıcı bulunamadı.';
+      if (msg === 'User is not active') return 'Hesabınız aktif değil.';
+      return msg ?? 'Giriş yapılamadı. Lütfen tekrar deneyin.';
     }
-    return null;
   },
 
+  // Kayıt ol
   async register(
     email: string,
     password: string,
-    profile: { full_name: string; phone: string; city?: string; organization?: string }
+    profile: { full_name: string; phone: string; tc_no: string; city?: string; role?: string }
   ): Promise<string | null> {
-    // 1. Supabase'e kayıt
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: profile.full_name },
-        emailRedirectTo: undefined,
-        captchaToken: undefined,
-      },
-    });
-
-    if (error) {
-      // Rate limit hatası: hesap zaten oluşturulmuş olabilir, giriş yapmayı dene
-      if (
-        error.message?.toLowerCase().includes('rate limit') ||
-        error.message?.toLowerCase().includes('email') ||
-        (error as any)?.code === 'over_email_send_rate_limit'
-      ) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (!signInError && signInData.session) {
-          // Giriş başarılı — profil güncelle ve devam et
-          try {
-            await api.patch('/api/v1/users/me', {
-              full_name: profile.full_name,
-              phone: profile.phone,
-              city: profile.city ?? '',
-              organization: profile.organization ?? null,
-            });
-          } catch {}
-          return null;
-        }
-        return 'E-posta gönderim limiti aşıldı. Birkaç dakika bekleyip tekrar deneyin.';
-      }
-      return error.message;
-    }
-    if (!data.session) return 'Kayıt tamamlanamadı, lütfen tekrar deneyin.';
-
-    // 2. Backend'e profil bilgilerini gönder (auto-sync + update)
     try {
-      await api.patch('/api/v1/users/me', {
+      const res = await api.post('/api/v1/auth/register', {
+        email,
+        password,
         full_name: profile.full_name,
         phone: profile.phone,
+        tc_no: profile.tc_no,
         city: profile.city ?? '',
-        organization: profile.organization ?? null,
+        role: profile.role ?? 'citizen',
       });
+      const { access_token, refresh_token } = res.data;
+      await AsyncStorage.setItem('access_token', access_token);
+      await AsyncStorage.setItem('refresh_token', refresh_token);
+      const me = await api.get('/api/v1/auth/me');
+      await AsyncStorage.setItem('user', JSON.stringify(me.data));
+      return null;
     } catch (e: any) {
-      console.log('Profil güncelleme hatası:', e?.response?.data ?? e?.message);
-      // Auth başarılı oldu, profil hatası kritik değil
+      const detail = e?.response?.data?.detail;
+      // Array (Pydantic validation hatası)
+      if (Array.isArray(detail)) {
+        return 'Lütfen tüm alanları doğru doldurun.';
+      }
+      // String hata mesajı
+      if (typeof detail === 'string') {
+        if (detail.includes('email') || detail.includes('Email')) return 'Bu e-posta adresi zaten kullanılıyor.';
+        if (detail.includes('phone') || detail.includes('telefon')) return 'Bu telefon numarası zaten kayıtlı.';
+        if (detail.includes('tc_no') || detail.includes('TC') || detail.includes('tc')) return 'Bu TC kimlik numarası zaten kayıtlı.';
+        // Backend Türkçe mesaj döndürüyorsa direkt göster
+        return detail;
+      }
+      return 'Kayıt tamamlanamadı. Lütfen tekrar deneyin.';
     }
-
-    return null;
   },
 
+  // Çıkış yap
   async logout(): Promise<void> {
-    await supabase.auth.signOut();
+    await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
   },
 
-  async getSession() {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session;
+  // Mevcut kullanıcıyı getir
+  async getUser(): Promise<User | null> {
+    const raw = await AsyncStorage.getItem('user');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  },
+
+  // Token var mı kontrol et
+  async getAccessToken(): Promise<string | null> {
+    return AsyncStorage.getItem('access_token');
   },
 };

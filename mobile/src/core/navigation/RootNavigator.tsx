@@ -9,12 +9,13 @@ import { authService } from '../../features/auth/services/auth.service';
 import colors from '../../shared/theme/colors';
 
 const RootNavigator = () => {
-  const { session, setSession } = useAuthStore();
+  const { isLoggedIn, setUser } = useAuthStore();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    authService.getSession().then((s) => {
-      setSession(s);
+    // AsyncStorage'da token ve kullanıcı var mı kontrol et
+    authService.getUser().then((user) => {
+      if (user) setUser(user);
       setChecking(false);
     });
   }, []);
@@ -30,7 +31,7 @@ const RootNavigator = () => {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        {session ? <AppNavigator /> : <AuthNavigator />}
+        {isLoggedIn ? <AppNavigator /> : <AuthNavigator />}
       </NavigationContainer>
     </SafeAreaProvider>
   );
