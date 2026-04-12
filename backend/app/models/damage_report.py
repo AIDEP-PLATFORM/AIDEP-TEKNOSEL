@@ -1,6 +1,6 @@
 # Kullanıcıların deprem sonrası fotoğraf çekip gönderdiği hasar raporlarını tutuyor. YOLOv8 bu fotoğrafları analiz edip sonuçları buraya yazıyor.
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey, Index
+from sqlalchemy import Column, String, DateTime, Float, Integer, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB # JSONB → PostgreSQL'e özgü JSON tipi. Normal JSON'dan farkı içeriği binary olarak saklar, bu sayede JSON içinde arama yapılabilir ve daha hızlı çalışır. YOLO'nun analiz sonuçları buraya kaydedilecek
 from sqlalchemy.sql import func
 from geoalchemy2 import Geography # Coğrafi konum verisi saklamak için. Normal Float ile enlem/boylam tutmak yerine PostGIS'in Geography tipini kullanıyoruz — mesafe hesaplama, yakındaki noktaları bulma gibi işlemler çok daha kolay oluyor.
@@ -15,8 +15,14 @@ class DamageReport(Base):
     location = Column(Geography(geometry_type='POINT', srid=4326, spatial_index=False), nullable=False) #geometry_type='POINT' → Tek bir nokta koordinatı, enlem ve boylam, srid=4326 → Dünya standardı koordinat sistemi. Google Maps, GPS hepsi bunu kullanır,  GeoAlchemy2 otomatik GIST index oluşturmasın, biz aşağıda __table_args__'da elle tanımlıyoruz, nullable=False → Konum zorunlu, nerede hasar olduğu bilinmeden rapor kabul edilmez
     photo_url = Column(String, nullable=False)
     
-    analysis_results = Column(JSONB, nullable=True) # YOLOv8'in analiz sonuçları buraya yazılıyor. 
-    status = Column(String(50), nullable=False, default="analyzing") # Raporun hangi aşamada olduğunu gösterir: analyzing → Fotoğraf yeni geldi, YOLOv8 analiz ediyor, verified → Analiz tamamlandı, doğrulandı, rejected → Geçersiz fotoğraf, reddedildi
+    description = Column(String(1000), nullable=True)  # Kullanıcının yazdığı açıklama
+
+    damage_class = Column(String(50), nullable=True)   # YOLO baskın sınıfı: bina_yikilmis, yol_gecilemez vb.
+    severity = Column(Integer, nullable=True)          # 1-5 hasar şiddeti (YOLO'dan)
+    priority_score = Column(Float, nullable=True)      # XGBoost öncelik skoru 0-100
+
+    analysis_results = Column(JSONB, nullable=True)    # YOLO tam detections listesi
+    status = Column(String(50), nullable=False, default="analyzing")  # analyzing | verified | rejected
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
