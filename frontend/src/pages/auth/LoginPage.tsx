@@ -10,10 +10,8 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axiosInstance from "../../core/api/axiosInstance";
-import { authEndpoints } from "../../core/api/endpoints";
+import authService from "../../core/api/auth.service";
 import { useAuthStore } from "../../stores/authStore";
-import type { User } from "../../stores/authStore";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -33,13 +31,8 @@ const LoginPage = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data: tokens } = await axiosInstance.post<{
-        access_token: string;
-        refresh_token: string;
-      }>(authEndpoints.login, { email, password });
-      const { data: user } = await axiosInstance.get<User>(authEndpoints.me, {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
+      const tokens = await authService.login({ email, password });
+      const user = await authService.me(tokens.access_token);
       setAuth(user, tokens.access_token, tokens.refresh_token);
       navigate("/");
     } catch (err: unknown) {

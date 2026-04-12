@@ -4,7 +4,7 @@ import axios from "axios";
 // API URL'ini Vite'in ortam (environment) değişkenlerinden alıyoruz.
 // Eğer tanımlı değilse, geliştirme aşamasında olduğumuzu varsayıp localhost:8080 veriyoruz.
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1",
+  baseURL: (import.meta.env.VITE_API_URL || "http://localhost:8000") + "/api/v1",
   timeout: 10000, // 10 saniye sonra isteği iptal et
   headers: {
     "Content-Type": "application/json",

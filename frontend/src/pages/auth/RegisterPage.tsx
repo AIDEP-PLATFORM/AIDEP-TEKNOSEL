@@ -11,10 +11,8 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axiosInstance from "../../core/api/axiosInstance";
-import { authEndpoints } from "../../core/api/endpoints";
+import authService from "../../core/api/auth.service";
 import { useAuthStore } from "../../stores/authStore";
-import type { User as AuthUser } from "../../stores/authStore";
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 56 : -56, opacity: 0 }),
@@ -102,26 +100,17 @@ const RegisterPage = () => {
     }
     setIsLoading(true);
     try {
-      const payload = {
+      const tokens = await authService.register({
         email,
         password,
         phone,
         tc_no: tcNo,
         full_name: fullName,
-        role: "ngo" as const,
+        role: "ngo",
         organization: organization.trim(),
         ...(city.trim() ? { city: city.trim() } : {}),
-      };
-      const { data: tokens } = await axiosInstance.post<{
-        access_token: string;
-        refresh_token: string;
-      }>(authEndpoints.register, payload);
-      const { data: user } = await axiosInstance.get<AuthUser>(
-        authEndpoints.me,
-        {
-          headers: { Authorization: `Bearer ${tokens.access_token}` },
-        },
-      );
+      });
+      const user = await authService.me(tokens.access_token);
       setAuth(user, tokens.access_token, tokens.refresh_token);
       setSuccess(true);
       setTimeout(() => navigate("/"), 1800);
