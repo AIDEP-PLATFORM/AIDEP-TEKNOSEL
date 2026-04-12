@@ -29,6 +29,7 @@ async def create_user(
     tc_no: str | None = None,
     full_name: str | None = None,
     city: str | None = None,
+    organization: str | None = None,
     role: str = "citizen",
 ) -> User:
     user = User(
@@ -38,6 +39,7 @@ async def create_user(
         tc_no=tc_no,
         full_name=full_name,
         city=city,
+        organization=organization,
         role=role,
     )
     db.add(user)

@@ -1,7 +1,7 @@
 # AIDEP Platform (Teknosel O2662)
 
 ## Projeye Genel Bakış
-Teknosel MVP O2662 numaralı proje için hazırlanmış ileri düzey altyapı, harita ve konteynerize edilmiş yapay zeka platformudur. Veri katmanı **Supabase** (PostGIS, barındırılan hizmet — Docker’da ayrı DB konteyneri yok), coğrafi yönlendirme **OSRM**, model depolama **MinIO S3** ile sağlanır.
+Teknosel MVP O2662 numaralı proje için hazırlanmış ileri düzey altyapı, harita ve konteynerize edilmiş yapay zeka platformudur. Veri katmanı **PostgreSQL (PostGIS)** — Docker Compose ile `postgres` servisi ayağa kalkar; backend konteyneri `postgres:5432` üzerinden bağlanır. Coğrafi yönlendirme **OSRM**, model depolama **MinIO S3** ile sağlanır.
 
 **MVP öncelikleri ve kapsam dışı:** [docs/MVP.md](docs/MVP.md)
 
@@ -23,10 +23,10 @@ make dev
 | MinIO Console (S3 Arayüzü) | `http://localhost:9001/` |
 
 ## Klasör Yapısı
-- `/backend`: FastAPI mikroservisi ve Supabase (PostGIS) bağlantıları
+- `/backend`: FastAPI mikroservisi ve PostgreSQL (PostGIS) bağlantıları
 - `/ai-service`: Ultralytics/XGBoost analiz motorları (Port: 8001)
 - `/frontend`: Web panel için React geliştirme ortamı (Port: 3000)
-- `/postgres`: Supabase SQL Editor’de çalıştırılacak `init.sql` (PostGIS uzantıları)
+- `/postgres`: İsteğe bağlı yerel SQL betikleri (PostGIS uzantıları vb.)
 - `/nginx`: Gelen trafikleri ayrıştıran Reverse Proxy dosyaları
 - `/secrets`: İsteğe bağlı yerel gizli dosyalar (repoya eklenmez)
 

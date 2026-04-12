@@ -1,167 +1,246 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Button,
-  Input,
-  VStack,
-  Text,
-  Flex,
-  Icon,
-} from '@chakra-ui/react';
-import { Shield, Mail, ArrowLeft } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertTriangle, Shield, Lock, KeyRound, MailCheck, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../core/supabase';
+import axiosInstance from '../../core/api/axiosInstance';
+import { authEndpoints } from '../../core/api/endpoints';
 
+/* ── Sol Panel ──────────────────────────────────────────────────────────
+   Hesap güvenliği temasıyla branding                                    */
+const LeftPanel = () => (
+  <div className="auth-left">
+    <div className="auth-left-logo">
+      <div className="auth-left-logo-icon">
+        <Shield size={22} color="white" />
+      </div>
+      <div className="auth-left-logo-text">
+        <span className="auth-left-logo-name">AIDEP</span>
+        <span className="auth-left-logo-sub">Afet Yönetim Sistemi</span>
+      </div>
+    </div>
+
+    <div className="auth-left-body">
+      <div>
+        <h1 className="auth-left-heading">
+          Hesabınız<br />
+          <span>güvende.</span>
+        </h1>
+        <p className="auth-left-desc">
+          Şifrenizi unutmanız durumunda kayıtlı e-posta adresinize
+          güvenli bir sıfırlama bağlantısı gönderilir.
+        </p>
+      </div>
+
+      <div className="auth-left-features">
+        <div className="auth-left-feature">
+          <div className="auth-left-feature-dot auth-left-feature-dot--red">
+            <Lock size={13} />
+          </div>
+          <div>
+            <div className="auth-left-feature-title">Şifreli Bağlantı</div>
+            <div className="auth-left-feature-sub">Sıfırlama bağlantısı tek kullanımlık ve zaman sınırlıdır</div>
+          </div>
+        </div>
+        <div className="auth-left-feature">
+          <div className="auth-left-feature-dot auth-left-feature-dot--blue">
+            <MailCheck size={13} />
+          </div>
+          <div>
+            <div className="auth-left-feature-title">E-posta Doğrulama</div>
+            <div className="auth-left-feature-sub">Yalnızca kayıtlı e-posta adresinize gönderilir</div>
+          </div>
+        </div>
+        <div className="auth-left-feature">
+          <div className="auth-left-feature-dot auth-left-feature-dot--green">
+            <KeyRound size={13} />
+          </div>
+          <div>
+            <div className="auth-left-feature-title">Güvenli Sıfırlama</div>
+            <div className="auth-left-feature-sub">bcrypt ile şifrelenmiş yeni parola anında aktif olur</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="auth-left-footer">
+      © 2025 AIDEP Platform · Tüm hakları saklıdır.
+    </div>
+  </div>
+);
+
+/* ── Ana Bileşen ────────────────────────────────────────────────────── */
 const ForgotPasswordPage = () => {
-  const [email, setEmail] = useState('');
+  const [email,     setEmail]     = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+  const [sent,      setSent]      = useState(false);
 
   const handleReset = async () => {
-    if (!email) {
-      setError('E-posta adresi zorunludur.');
-      return;
-    }
+    if (!email.trim()) { setError('E-posta adresi zorunludur.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Geçerli bir e-posta adresi giriniz.'); return; }
+
     setIsLoading(true);
     setError(null);
 
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (authError) {
-      setError('Bir hata oluştu, lütfen tekrar deneyin.');
-    } else {
+    try {
+      await axiosInstance.post(authEndpoints.forgotPassword, { email });
+    } catch {
+      /* Güvenlik gereği: hata olsa bile başarılı göster */
+    } finally {
+      setIsLoading(false);
       setSent(true);
     }
-    setIsLoading(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleReset();
   };
 
   return (
-    <Box
-      minH="100vh"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      bg="gray.50"
-      backgroundImage="radial-gradient(ellipse at top, #fee2e2 0%, #f9fafb 60%)"
-    >
-      <Box
-        bg="white"
-        shadow="xl"
-        borderRadius="2xl"
-        p={10}
-        w="100%"
-        maxW="420px"
-        border="1px solid"
-        borderColor="gray.100"
-      >
-        {/* Logo */}
-        <Flex direction="column" align="center" mb={8}>
-          <Flex
-            w="64px"
-            h="64px"
-            bg="#e53e3e"
-            borderRadius="xl"
-            alignItems="center"
-            justifyContent="center"
-            mb={4}
-            boxShadow="0 8px 24px rgba(229, 62, 62, 0.35)"
-          >
-            <Icon color="white" style={{ width: 32, height: 32 }}>
-              <Shield />
-            </Icon>
-          </Flex>
-          <Text fontSize="2xl" fontWeight="800" color="gray.900" letterSpacing="tight">
-            Şifremi Unuttum
-          </Text>
-          <Text color="gray.500" fontSize="sm" mt={1} textAlign="center">
-            {sent
-              ? 'Sıfırlama bağlantısı e-postanıza gönderildi.'
-              : 'Kayıtlı e-posta adresinizi girin, sıfırlama bağlantısı gönderelim.'}
-          </Text>
-        </Flex>
+    <div className="auth-page">
+      {/* Gradient arka plan orb'ları */}
+      <div className="auth-orb auth-orb-1" />
+      <div className="auth-orb auth-orb-2" />
+      <div className="auth-orb auth-orb-3" />
 
-        {!sent ? (
-          <VStack gap={4} onKeyDown={handleKeyDown}>
-            <Box w="100%" position="relative">
-              <Box
-                position="absolute"
-                left={3}
-                top="50%"
-                transform="translateY(-50%)"
-                color="gray.400"
-                pointerEvents="none"
-                zIndex={1}
-                display="flex"
-                alignItems="center"
-              >
-                <Mail size={16} />
-              </Box>
-              <Input
-                pl={9}
-                placeholder="E-posta"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                borderRadius="lg"
-                borderColor="gray.200"
-                bg="white"
-                color="gray.900"
-                _placeholder={{ color: 'gray.400' }}
-                _focus={{ borderColor: '#e53e3e', boxShadow: '0 0 0 1px #e53e3e', bg: 'white' }}
-                _hover={{ borderColor: 'gray.300' }}
-                h="44px"
-                fontSize="sm"
-              />
-            </Box>
+      <LeftPanel />
 
-            {error && (
-              <Text color="red.500" fontSize="sm" w="100%">
-                {error}
-              </Text>
-            )}
+      {/* ── SAĞ PANEL ──────────────────────────────────────────────── */}
+      <div className="auth-right">
+        <motion.div
+          className="auth-right-inner"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+        >
+          {/* Başlık */}
+          <div>
+            <h2 className="auth-right-title">Şifremi Unuttum</h2>
+            <p className="auth-right-subtitle">
+              {sent
+                ? 'Sıfırlama bağlantısı gönderildi.'
+                : 'Kayıtlı e-posta adresinizi girin.'}
+            </p>
+          </div>
 
-            <Button
-              w="100%"
-              h="44px"
-              bg="#e53e3e"
-              color="white"
-              borderRadius="lg"
-              fontWeight="600"
-              fontSize="sm"
-              loading={isLoading}
-              onClick={handleReset}
-              _hover={{ bg: '#c53030', transform: 'translateY(-1px)', boxShadow: '0 4px 16px rgba(229,62,62,0.4)' }}
-              _active={{ bg: '#9b2c2c', transform: 'translateY(0)' }}
-              transition="all 0.2s"
-            >
-              Sıfırlama Bağlantısı Gönder
-            </Button>
-          </VStack>
-        ) : (
-          <Box textAlign="center">
-            <Text color="green.500" fontSize="sm" mb={4}>
-              Lütfen gelen kutunuzu (ve spam klasörünü) kontrol edin.
-            </Text>
-          </Box>
-        )}
+          {/* Kart */}
+          <div className="auth-card">
+            <AnimatePresence mode="wait">
 
-        <Flex justify="center" mt={6}>
-          <Link to="/login">
-            <Flex align="center" gap={1} color="gray.500" _hover={{ color: '#e53e3e' }}>
-              <ArrowLeft size={14} />
-              <Text fontSize="xs">Giriş sayfasına dön</Text>
-            </Flex>
-          </Link>
-        </Flex>
-      </Box>
-    </Box>
+              {/* ── Gönderilmedi: Form ─────────────────────────── */}
+              {!sent ? (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                >
+                  <div className="auth-card-header">
+                    <h2>Şifre Sıfırlama</h2>
+                    <p>
+                      E-posta adresinizi girin, size güvenli bir
+                      sıfırlama bağlantısı gönderelim.
+                    </p>
+                  </div>
+
+                  <div className="auth-fields">
+                    <input
+                      className="auth-input"
+                      type="email"
+                      placeholder="E-posta adresi"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setError(null); }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleReset()}
+                      autoComplete="email"
+                      autoFocus
+                    />
+
+                    <AnimatePresence>
+                      {error && (
+                        <motion.div
+                          className="auth-error"
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                        >
+                          <AlertTriangle size={14} />{error}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <motion.button
+                      className="auth-btn"
+                      onClick={handleReset}
+                      disabled={isLoading}
+                      whileHover={{ scale: isLoading ? 1 : 1.015 }}
+                      whileTap={{ scale: isLoading ? 1 : 0.975 }}
+                    >
+                      {isLoading
+                        ? <span className="auth-spinner" />
+                        : 'Sıfırlama Bağlantısı Gönder'}
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ) : (
+
+                /* ── Gönderildi: Başarı durumu ─────────────────── */
+                <motion.div
+                  key="sent"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+                >
+                  {/* İkon */}
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+                    <motion.div
+                      initial={{ scale: 0, rotate: -20 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 280, damping: 18, delay: 0.1 }}
+                    >
+                      <div className="forgot-sent-icon">
+                        <MailCheck size={30} />
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* Metin */}
+                  <div className="auth-card-header" style={{ marginBottom: 16 }}>
+                    <h2>Bağlantı Gönderildi</h2>
+                    <p>
+                      <strong style={{ color: 'rgba(255,255,255,0.7)' }}>{email}</strong>{' '}
+                      adresine sıfırlama bağlantısı gönderildi.
+                      Gelen kutunuzu ve spam klasörünü kontrol edin.
+                    </p>
+                  </div>
+
+                  {/* Bilgi kutusu */}
+                  <div className="forgot-info-box">
+                    <div className="forgot-info-dot" />
+                    <span>Bağlantı 15 dakika geçerlidir.</span>
+                  </div>
+
+                  {/* Tekrar gönder */}
+                  <motion.button
+                    className="auth-btn"
+                    style={{ marginTop: 16 }}
+                    onClick={() => { setSent(false); setEmail(''); }}
+                    whileHover={{ scale: 1.015 }}
+                    whileTap={{ scale: 0.975 }}
+                  >
+                    Farklı e-posta ile tekrar dene
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Geri dön */}
+            <div className="auth-card-footer" style={{ marginTop: 16, justifyContent: 'center' }}>
+              <Link to="/login" className="forgot-back-link">
+                <ArrowLeft size={13} />
+                Giriş sayfasına dön
+              </Link>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
   );
 };
 

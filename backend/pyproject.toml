@@ -19,11 +19,10 @@ dependencies = [
     "geoalchemy2>=0.15.0",
     # Redis
     "redis==5.2.1",
-    # Supabase
-    "supabase>=2.9.0",
     # Settings
     "pydantic[email]>=2.12.5",
     "pydantic-settings>=2.13.0",
+    "email-validator>=2.1.0",
     # MinIO
     "minio>=7.2.0",
     # HTTP Client

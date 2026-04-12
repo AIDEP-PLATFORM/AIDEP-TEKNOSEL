@@ -1,357 +1,481 @@
-import React, { useState } from 'react';
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Box,
-  Button,
-  Input,
-  VStack,
-  Text,
-  Flex,
-  Icon,
-} from '@chakra-ui/react';
-import { Shield, Mail, Lock, UserPlus, Building2 } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../../core/supabase';
-import type { Role } from '../../stores/authStore';
+  Activity,
+  AlertTriangle,
+  Building2,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  MapPin,
+  Shield,
+} from "lucide-react";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axiosInstance from "../../core/api/axiosInstance";
+import { authEndpoints } from "../../core/api/endpoints";
+import { useAuthStore } from "../../stores/authStore";
+import type { User as AuthUser } from "../../stores/authStore";
 
-const ROLE_OPTIONS: { value: Extract<Role, 'stk' | 'afad'>; label: string }[] = [
-  { value: 'stk', label: 'STK — Sivil Toplum Kuruluşu' },
-  { value: 'afad', label: 'AFAD — Afet ve Acil Durum Yönetimi' },
-];
+const slideVariants = {
+  enter: (dir: number) => ({ x: dir > 0 ? 56 : -56, opacity: 0 }),
+  center: {
+    x: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.3,
+      ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
+    },
+  },
+  exit: (dir: number) => ({
+    x: dir > 0 ? -56 : 56,
+    opacity: 0,
+    transition: { duration: 0.2 },
+  }),
+};
 
 const RegisterPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [role, setRole] = useState<'stk' | 'afad'>('stk');
-  const [organization, setOrganization] = useState('');
+  const [step, setStep] = useState(1);
+  const [dir, setDir] = useState(1);
+
+  /* Adım 1 */
+  const [fullName, setFullName] = useState("");
+  const [tcNo, setTcNo] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+
+  /* Adım 2 — yalnızca STK (ngo) */
+  const [city, setCity] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [password, setPassword] = useState("");
+  const [passConfirm, setPassConfirm] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [showPass2, setShowPass2] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
   const navigate = useNavigate();
+  const { setAuth } = useAuthStore();
+
+  const validateStep1 = (): string | null => {
+    if (!fullName.trim() || fullName.trim().length < 2)
+      return "Ad Soyad en az 2 karakter olmalıdır.";
+    if (!/^\d{11}$/.test(tcNo))
+      return "TC Kimlik No 11 haneli rakam olmalıdır.";
+    if (!/^\+?[\d\s\-]{10,15}$/.test(phone))
+      return "Geçerli bir telefon numarası giriniz.";
+    if (!email.trim()) return "E-posta adresi zorunludur.";
+    return null;
+  };
+
+  const validateStep2 = (): string | null => {
+    if (!organization.trim()) return "STK kurum adı zorunludur.";
+    if (password.length < 8) return "Şifre en az 8 karakter olmalıdır.";
+    if (password !== passConfirm) return "Şifreler eşleşmiyor.";
+    return null;
+  };
+
+  const goNext = () => {
+    setError(null);
+    const err = validateStep1();
+    if (err) {
+      setError(err);
+      return;
+    }
+    setDir(1);
+    setStep(2);
+  };
+
+  const goBack = () => {
+    setError(null);
+    setDir(-1);
+    setStep(1);
+  };
 
   const handleRegister = async () => {
     setError(null);
-
-    if (!email || !password || !organization) {
-      setError('Tüm alanları doldurunuz.');
+    const err = validateStep2();
+    if (err) {
+      setError(err);
       return;
     }
-    if (password.length < 8) {
-      setError('Şifre en az 8 karakter olmalıdır.');
-      return;
-    }
-    if (password !== passwordConfirm) {
-      setError('Şifreler eşleşmiyor.');
-      return;
-    }
-
     setIsLoading(true);
-
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { role, organization },
-      },
-    });
-
-    if (authError) {
-      setError(authError.message);
-    } else {
+    try {
+      const payload = {
+        email,
+        password,
+        phone,
+        tc_no: tcNo,
+        full_name: fullName,
+        role: "ngo" as const,
+        organization: organization.trim(),
+        ...(city.trim() ? { city: city.trim() } : {}),
+      };
+      const { data: tokens } = await axiosInstance.post<{
+        access_token: string;
+        refresh_token: string;
+      }>(authEndpoints.register, payload);
+      const { data: user } = await axiosInstance.get<AuthUser>(
+        authEndpoints.me,
+        {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        },
+      );
+      setAuth(user, tokens.access_token, tokens.refresh_token);
       setSuccess(true);
+      setTimeout(() => navigate("/"), 1800);
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: unknown } } })
+        ?.response?.data?.detail;
+      setError(
+        typeof detail === "string"
+          ? detail
+          : "Kayıt sırasında bir hata oluştu.",
+      );
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleRegister();
-  };
+  const LeftPanel = () => (
+    <div className="auth-left">
+      <div className="auth-left-logo">
+        <div className="auth-left-logo-icon">
+          <Shield size={22} color="white" />
+        </div>
+        <div className="auth-left-logo-text">
+          <span className="auth-left-logo-name">AIDEP</span>
+          <span className="auth-left-logo-sub">Afet Yönetim Sistemi</span>
+        </div>
+      </div>
+
+      <div className="auth-left-body">
+        <div>
+          <h1 className="auth-left-heading">
+            STK olarak
+            <br />
+            <span>web paneline kayıt.</span>
+          </h1>
+          <p className="auth-left-desc">
+            Bu kayıt formu yalnızca sivil toplum kuruluşu yetkilileri içindir.
+            Gönüllü ve vatandaş işlemleri mobil uygulama üzerinden yapılır.
+          </p>
+        </div>
+        <div className="auth-left-features">
+          <div className="auth-left-feature">
+            <div className="auth-left-feature-dot auth-left-feature-dot--red">
+              <Activity size={13} />
+            </div>
+            <div>
+              <div className="auth-left-feature-title">Operasyon özeti</div>
+              <div className="auth-left-feature-sub">
+                Talepler ve harita üzerinden kurumsal takip
+              </div>
+            </div>
+          </div>
+          <div className="auth-left-feature">
+            <div className="auth-left-feature-dot auth-left-feature-dot--blue">
+              <MapPin size={13} />
+            </div>
+            <div>
+              <div className="auth-left-feature-title">Coğrafi görünüm</div>
+              <div className="auth-left-feature-sub">
+                Hasar ve rota katmanlarıyla koordinasyon
+              </div>
+            </div>
+          </div>
+          <div className="auth-left-feature">
+            <div className="auth-left-feature-dot auth-left-feature-dot--green">
+              <Building2 size={13} />
+            </div>
+            <div>
+              <div className="auth-left-feature-title">Kurum profili</div>
+              <div className="auth-left-feature-sub">
+                STK adı ve yetkili bilgileri güvenli şekilde saklanır
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="auth-left-footer">
+        © 2025 AIDEP Platform · Tüm hakları saklıdır.
+      </div>
+    </div>
+  );
 
   if (success) {
     return (
-      <Box
-        minH="100vh"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        bg="gray.50"
-        backgroundImage="radial-gradient(ellipse at top, #fee2e2 0%, #f9fafb 60%)"
-      >
-        <Box
-          bg="white"
-          shadow="xl"
-          borderRadius="2xl"
-          p={10}
-          w="100%"
-          maxW="420px"
-          border="1px solid"
-          borderColor="gray.100"
-          textAlign="center"
-        >
-          <Text fontSize="xl" fontWeight="700" color="gray.900" mb={3}>
-            Kayıt Talebiniz Alındı
-          </Text>
-          <Text color="gray.500" fontSize="sm" mb={6}>
-            E-posta adresinize doğrulama bağlantısı gönderildi. Lütfen gelen kutunuzu kontrol edin.
-          </Text>
-          <Button
-            bg="#e53e3e"
-            color="white"
-            borderRadius="lg"
-            fontWeight="600"
-            fontSize="sm"
-            onClick={() => navigate('/login')}
-            _hover={{ bg: '#c53030' }}
+      <div className="auth-page">
+        <div className="auth-orb auth-orb-1" />
+        <div className="auth-orb auth-orb-2" />
+        <LeftPanel />
+        <div className="auth-right">
+          <motion.div
+            className="auth-success-box"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
           >
-            Giriş Sayfasına Dön
-          </Button>
-        </Box>
-      </Box>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, delay: 0.2 }}
+            >
+              <CheckCircle size={48} color="#10b981" />
+            </motion.div>
+            <h2>Kayıt başarılı</h2>
+            <p>STK hesabınız oluşturuldu. Panele yönlendiriliyorsunuz...</p>
+            <div className="auth-progress-bar">
+              <motion.div
+                className="auth-progress-fill"
+                initial={{ width: "0%" }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 1.8, ease: "linear" }}
+              />
+            </div>
+          </motion.div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Box
-      minH="100vh"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      bg="gray.50"
-      backgroundImage="radial-gradient(ellipse at top, #fee2e2 0%, #f9fafb 60%)"
-    >
-      <Box
-        bg="white"
-        shadow="xl"
-        borderRadius="2xl"
-        p={10}
-        w="100%"
-        maxW="440px"
-        border="1px solid"
-        borderColor="gray.100"
-      >
-        {/* Logo */}
-        <Flex direction="column" align="center" mb={8}>
-          <Flex
-            w="64px"
-            h="64px"
-            bg="#e53e3e"
-            borderRadius="xl"
-            alignItems="center"
-            justifyContent="center"
-            mb={4}
-            boxShadow="0 8px 24px rgba(229, 62, 62, 0.35)"
-          >
-            <Icon color="white" style={{ width: 32, height: 32 }}>
-              <Shield />
-            </Icon>
-          </Flex>
-          <Text fontSize="2xl" fontWeight="800" color="gray.900" letterSpacing="tight">
-            Yetkili Kayıt
-          </Text>
-          <Text color="gray.500" fontSize="sm" mt={1} textAlign="center">
-            STK veya AFAD yetkilisi olarak sisteme kayıt olun.
-          </Text>
-        </Flex>
+    <div className="auth-page">
+      <div className="auth-orb auth-orb-1" />
+      <div className="auth-orb auth-orb-2" />
+      <div className="auth-orb auth-orb-3" />
 
-        <VStack gap={4} onKeyDown={handleKeyDown}>
-          {/* Rol seçimi */}
-          <Flex w="100%" gap={2}>
-            {ROLE_OPTIONS.map((opt) => (
-              <Box
-                key={opt.value}
-                flex={1}
-                p={3}
-                borderRadius="lg"
-                border="2px solid"
-                borderColor={role === opt.value ? '#e53e3e' : 'gray.200'}
-                bg={role === opt.value ? '#fff5f5' : 'white'}
-                cursor="pointer"
-                onClick={() => setRole(opt.value)}
-                textAlign="center"
-                transition="all 0.15s"
-              >
-                <Text
-                  fontSize="xs"
-                  fontWeight="700"
-                  color={role === opt.value ? '#e53e3e' : 'gray.500'}
+      <LeftPanel />
+
+      <div className="auth-right">
+        <motion.div
+          className="auth-right-inner"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+          style={{ maxWidth: 440 }}
+        >
+          <div>
+            <h2 className="auth-right-title">STK kaydı</h2>
+            <p className="auth-right-subtitle">
+              Kurum yetkilisi olarak hesap oluşturun.
+            </p>
+          </div>
+
+          <div className="auth-steps">
+            <div className={`auth-step-circle ${step >= 1 ? "active" : ""}`}>
+              1
+            </div>
+            <div className={`auth-step-line ${step === 2 ? "filled" : ""}`} />
+            <div className={`auth-step-circle ${step === 2 ? "active" : ""}`}>
+              2
+            </div>
+          </div>
+
+          <div className="auth-card" style={{ overflow: "hidden" }}>
+            <AnimatePresence mode="wait" custom={dir}>
+              {step === 1 ? (
+                <motion.div
+                  key="s1"
+                  custom={dir}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
                 >
-                  {opt.value.toUpperCase()}
-                </Text>
-                <Text fontSize="10px" color="gray.400" mt={0.5}>
-                  {opt.label.split('—')[1]?.trim()}
-                </Text>
-              </Box>
-            ))}
-          </Flex>
+                  <div className="auth-card-header">
+                    <h2>Yetkili bilgileri</h2>
+                    <p>STK hesabı için kimlik bilgilerinizi girin.</p>
+                  </div>
 
-          {/* Kurum adı */}
-          <Box w="100%" position="relative">
-            <Box
-              position="absolute"
-              left={3}
-              top="50%"
-              transform="translateY(-50%)"
-              color="gray.400"
-              pointerEvents="none"
-              zIndex={1}
-              display="flex"
-              alignItems="center"
-            >
-              <Building2 size={16} />
-            </Box>
-            <Input
-              pl={9}
-              placeholder="Kurum / Organizasyon adı"
-              value={organization}
-              onChange={(e) => setOrganization(e.target.value)}
-              borderRadius="lg"
-              borderColor="gray.200"
-              bg="white"
-              color="gray.900"
-              _placeholder={{ color: 'gray.400' }}
-              _focus={{ borderColor: '#e53e3e', boxShadow: '0 0 0 1px #e53e3e', bg: 'white' }}
-              _hover={{ borderColor: 'gray.300' }}
-              h="44px"
-              fontSize="sm"
-            />
-          </Box>
+                  <div className="auth-fields">
+                    <input
+                      className="auth-input"
+                      type="text"
+                      placeholder="Ad Soyad"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && goNext()}
+                    />
 
-          {/* Email */}
-          <Box w="100%" position="relative">
-            <Box
-              position="absolute"
-              left={3}
-              top="50%"
-              transform="translateY(-50%)"
-              color="gray.400"
-              pointerEvents="none"
-              zIndex={1}
-              display="flex"
-              alignItems="center"
-            >
-              <Mail size={16} />
-            </Box>
-            <Input
-              pl={9}
-              placeholder="E-posta"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              borderRadius="lg"
-              borderColor="gray.200"
-              bg="white"
-              color="gray.900"
-              _placeholder={{ color: 'gray.400' }}
-              _focus={{ borderColor: '#e53e3e', boxShadow: '0 0 0 1px #e53e3e', bg: 'white' }}
-              _hover={{ borderColor: 'gray.300' }}
-              h="44px"
-              fontSize="sm"
-            />
-          </Box>
+                    <input
+                      className="auth-input"
+                      type="text"
+                      placeholder="TC Kimlik Numarası (11 hane)"
+                      value={tcNo}
+                      onChange={(e) =>
+                        setTcNo(e.target.value.replace(/\D/g, "").slice(0, 11))
+                      }
+                      onKeyDown={(e) => e.key === "Enter" && goNext()}
+                    />
 
-          {/* Password */}
-          <Box w="100%" position="relative">
-            <Box
-              position="absolute"
-              left={3}
-              top="50%"
-              transform="translateY(-50%)"
-              color="gray.400"
-              pointerEvents="none"
-              zIndex={1}
-              display="flex"
-              alignItems="center"
-            >
-              <Lock size={16} />
-            </Box>
-            <Input
-              pl={9}
-              type="password"
-              placeholder="Şifre (en az 8 karakter)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              borderRadius="lg"
-              borderColor="gray.200"
-              bg="white"
-              color="gray.900"
-              _placeholder={{ color: 'gray.400' }}
-              _focus={{ borderColor: '#e53e3e', boxShadow: '0 0 0 1px #e53e3e', bg: 'white' }}
-              _hover={{ borderColor: 'gray.300' }}
-              h="44px"
-              fontSize="sm"
-            />
-          </Box>
+                    <input
+                      className="auth-input"
+                      type="tel"
+                      placeholder="Telefon (ör. +90 555 000 0000)"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && goNext()}
+                    />
 
-          {/* Password Confirm */}
-          <Box w="100%" position="relative">
-            <Box
-              position="absolute"
-              left={3}
-              top="50%"
-              transform="translateY(-50%)"
-              color="gray.400"
-              pointerEvents="none"
-              zIndex={1}
-              display="flex"
-              alignItems="center"
-            >
-              <Lock size={16} />
-            </Box>
-            <Input
-              pl={9}
-              type="password"
-              placeholder="Şifreyi onayla"
-              value={passwordConfirm}
-              onChange={(e) => setPasswordConfirm(e.target.value)}
-              borderRadius="lg"
-              borderColor="gray.200"
-              bg="white"
-              color="gray.900"
-              _placeholder={{ color: 'gray.400' }}
-              _focus={{ borderColor: '#e53e3e', boxShadow: '0 0 0 1px #e53e3e', bg: 'white' }}
-              _hover={{ borderColor: 'gray.300' }}
-              h="44px"
-              fontSize="sm"
-            />
-          </Box>
+                    <input
+                      className="auth-input"
+                      type="email"
+                      placeholder="E-posta adresi"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && goNext()}
+                    />
 
-          {/* Hata mesajı */}
-          {error && (
-            <Text color="red.500" fontSize="sm" w="100%">
-              {error}
-            </Text>
-          )}
+                    <AnimatePresence>
+                      {error && (
+                        <motion.div
+                          className="auth-error"
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                        >
+                          <AlertTriangle size={14} />
+                          {error}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-          {/* Submit */}
-          <Button
-            w="100%"
-            h="44px"
-            bg="#e53e3e"
-            color="white"
-            borderRadius="lg"
-            fontWeight="600"
-            fontSize="sm"
-            loading={isLoading}
-            onClick={handleRegister}
-            _hover={{ bg: '#c53030', transform: 'translateY(-1px)', boxShadow: '0 4px 16px rgba(229,62,62,0.4)' }}
-            _active={{ bg: '#9b2c2c', transform: 'translateY(0)' }}
-            transition="all 0.2s"
-            gap={2}
-          >
-            <UserPlus size={16} />
-            Kayıt Ol
-          </Button>
-        </VStack>
+                    <motion.button
+                      className="auth-btn"
+                      onClick={goNext}
+                      whileHover={{ scale: 1.015 }}
+                      whileTap={{ scale: 0.975 }}
+                    >
+                      Devam →
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="s2"
+                  custom={dir}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                >
+                  <div className="auth-card-header">
+                    <h2>Kurum ve güvenlik</h2>
+                    <p>STK adı, şehir ve şifre bilgilerinizi belirleyin.</p>
+                  </div>
 
-        <Flex justify="center" mt={6}>
-          <Link to="/login">
-            <Text color="gray.500" fontSize="xs" _hover={{ color: '#e53e3e' }}>
-              Zaten hesabınız var mı? Giriş yapın
-            </Text>
-          </Link>
-        </Flex>
-      </Box>
-    </Box>
+                  <div className="auth-fields">
+                    <input
+                      className="auth-input"
+                      type="text"
+                      placeholder="STK / kurum adı (zorunlu)"
+                      value={organization}
+                      onChange={(e) => setOrganization(e.target.value)}
+                    />
+
+                    <input
+                      className="auth-input"
+                      type="text"
+                      placeholder="Şehir (opsiyonel)"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
+
+                    <div className="auth-input-wrap">
+                      <input
+                        className="auth-input"
+                        type={showPass ? "text" : "password"}
+                        placeholder="Şifre (en az 8 karakter)"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="auth-eye-btn"
+                        onClick={() => setShowPass((v) => !v)}
+                        tabIndex={-1}
+                      >
+                        {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+
+                    <div className="auth-input-wrap">
+                      <input
+                        className="auth-input"
+                        type={showPass2 ? "text" : "password"}
+                        placeholder="Şifreyi onayla"
+                        value={passConfirm}
+                        onChange={(e) => setPassConfirm(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                      />
+                      <button
+                        type="button"
+                        className="auth-eye-btn"
+                        onClick={() => setShowPass2((v) => !v)}
+                        tabIndex={-1}
+                      >
+                        {showPass2 ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+
+                    <AnimatePresence>
+                      {error && (
+                        <motion.div
+                          className="auth-error"
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                        >
+                          <AlertTriangle size={14} />
+                          {error}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <div className="auth-btn-row">
+                      <motion.button
+                        className="auth-btn auth-btn--ghost"
+                        onClick={goBack}
+                        whileHover={{ scale: 1.015 }}
+                        whileTap={{ scale: 0.975 }}
+                      >
+                        ← Geri
+                      </motion.button>
+                      <motion.button
+                        className="auth-btn"
+                        onClick={handleRegister}
+                        disabled={isLoading}
+                        style={{ flex: 1 }}
+                        whileHover={{ scale: isLoading ? 1 : 1.015 }}
+                        whileTap={{ scale: isLoading ? 1 : 0.975 }}
+                      >
+                        {isLoading ? (
+                          <span className="auth-spinner" />
+                        ) : (
+                          "Kayıt ol"
+                        )}
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="auth-card-footer" style={{ marginTop: 8 }}>
+              <span>
+                Zaten hesabınız var mı?{" "}
+                <Link to="/login" className="auth-link">
+                  Giriş yapın
+                </Link>
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
   );
 };
 

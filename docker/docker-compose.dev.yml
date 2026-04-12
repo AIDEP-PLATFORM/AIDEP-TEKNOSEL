@@ -1,4 +1,4 @@
-# Geliştirme ortamı. DB/Supabase Docker’da değil; servisler kok .env'den okur.
+# Geliştirme ortamı. PostgreSQL Docker’da değil; DATABASE_URL kök .env’den (harici PostGIS).
 # Örnek: docker compose -f docker/docker-compose.dev.yml up
 
 services:
@@ -25,7 +25,7 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   # ─── AI SERVİSİ ───────────────────────────────────────────────
-  # Rapor §3.3: YOLOv8m + XGBoost ayrı servis
+  # YOLOv8m + XGBoost ayrı servis
   # GPU için: deploy.resources.reservations.devices[nvidia] ekle
   ai:
     build: {context: ../ai-service, dockerfile: Dockerfile}
@@ -45,8 +45,6 @@ services:
       context: ../frontend
       dockerfile: Dockerfile
       args:
-        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?Set VITE_SUPABASE_URL in env for build}
-        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?Set VITE_SUPABASE_ANON_KEY in env for build}
         VITE_API_URL: ${VITE_API_URL:-http://localhost/api}
         VITE_WS_URL: ${VITE_WS_URL:-ws://localhost/ws}
     container_name: aidep-frontend

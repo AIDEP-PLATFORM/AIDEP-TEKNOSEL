@@ -26,7 +26,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5433:5432"  # 5432 local PostgreSQL ile çakışmasın diye 5433 kullanıyoruz
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U aidep -d aidep"]
       interval: 10s
@@ -175,6 +175,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://aidep:aidep_pass@postgres:5432/aidep
 

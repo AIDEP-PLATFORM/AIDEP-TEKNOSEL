@@ -41,7 +41,8 @@ from app.schemas.team import TeamCreate, TeamResponse, TeamAssign, TeamStatusUpd
 
 router = APIRouter()
 
-STK_ROLES = {"stk_official", "admin"}
+# STK web paneli: ngo | admin (eski stk_official de kabul)
+STK_ROLES = {"ngo", "admin", "stk_official"}
 
 
 # ── Gönüllü endpoint'leri ─────────────────────────────────────────────────────

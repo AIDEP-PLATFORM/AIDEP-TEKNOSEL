@@ -1,333 +1,436 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Animated,
+  Platform,
+} from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../../../shared/components/Icon';
 import TopBar from '../../../shared/components/TopBar';
-import FloatingBubbles from '../../../shared/components/FloatingBubbles';
+import DamageMarker from '../components/DamageMarker';
+import RouteOverlay from '../components/RouteOverlay';
+import { useMap } from '../hooks/useMap';
+import { useLocation } from '../../../shared/hooks/useLocation';
 import { useAuthStore } from '../../../core/stores/auth.store';
+import type { DamageReport, MapFilter } from '../types';
 
-const quickStats = [
-  { icon: 'alertTriangle' as const, label: 'Aktif Bölge', value: '48', color: '#FCA5A5' },
-  { icon: 'shield'        as const, label: 'Güvenli Alan', value: '12', color: '#6EE7B7' },
-  { icon: 'users'         as const, label: 'Saha Ekibi',   value: '23', color: '#fff'   },
-];
-
-const mapLayers = [
-  { icon: 'alertTriangle' as const, label: 'Hasar Noktaları',  desc: 'Kırmızı pin — yıkılan bina veya enkaz bölgesi',     color: '#EF4444', bg: 'rgba(255,241,242,0.92)', borderColor: '#FECACA', active: true  },
-  { icon: 'users'         as const, label: 'Ekip Konumları',   desc: 'Mavi pin — aktif saha ekiplerinin anlık konumu',      color: '#1976D2', bg: 'rgba(239,246,255,0.92)', borderColor: '#BFDBFE', active: true  },
-  { icon: 'mapPin'        as const, label: 'Toplanma Alanı',   desc: 'Yeşil pin — depremzedeler için güvenli toplanma noktaları', color: '#059669', bg: 'rgba(236,253,245,0.92)', borderColor: '#A7F3D0', active: false },
-  { icon: 'shield'        as const, label: 'Güvenli Güzergah', desc: 'Mor pin — tahliye ve yardım için önerilen rotalar',   color: '#7C3AED', bg: 'rgba(245,243,255,0.92)', borderColor: '#DDD6FE', active: false },
-];
-
-const alertBanners = [
-  { level: 'Kritik', text: 'Kahramanmaraş Merkez — 5.8 büyüklüğünde artçı sarsıntı', color: '#EF4444', bg: 'rgba(255,241,242,0.92)', border: '#FECACA' },
-  { level: 'Dikkat', text: 'D400 karayolu kapandı — alternatif güzergah kullanın',     color: '#D97706', bg: 'rgba(255,251,235,0.92)', border: '#FDE68A' },
-];
-
-const roleGradients: Record<string, [string, string, string]> = {
-  citizen:   ['#1565C0', '#1976D2', '#1E88E5'],
-  volunteer: ['#1B5E20', '#2E7D32', '#43A047'],
-  admin:     ['#4A148C', '#7B1FA2', '#AB47BC'],
+// Türkiye merkezi
+const TURKEY_REGION = {
+  latitude: 38.9,
+  longitude: 35.5,
+  latitudeDelta: 9.0,
+  longitudeDelta: 9.0,
 };
 
-const roleBgEnd: Record<string, string> = {
-  citizen:   '#EFF6FF',
-  volunteer: '#F0FDF4',
-  admin:     '#F5F3FF',
+const roleGradients: Record<string, [string, string]> = {
+  citizen:   ['#1565C0', '#1976D2'],
+  volunteer: ['#1B5E20', '#2E7D32'],
+  admin:     ['#4A148C', '#7B1FA2'],
 };
+
+const FILTERS: { key: MapFilter; label: string; color: string; icon: 'alertTriangle' | 'users' | 'mapPin' | 'shield' }[] = [
+  { key: 'hasar',    label: 'Hasar',    color: '#EF4444', icon: 'alertTriangle' },
+  { key: 'ekip',     label: 'Ekip',     color: '#1976D2', icon: 'users'         },
+  { key: 'toplanma', label: 'Toplanma', color: '#059669', icon: 'mapPin'        },
+  { key: 'guzergah', label: 'Güzergah', color: '#7C3AED', icon: 'shield'        },
+];
 
 export default function MapScreen() {
   const { user } = useAuthStore();
   const role = user?.role ?? 'citizen';
   const gradient = roleGradients[role] ?? roleGradients.citizen;
-  const bgEnd = roleBgEnd[role] ?? roleBgEnd.citizen;
+  const insets = useSafeAreaInsets();
 
-  const [activeFilters, setActiveFilters] = useState<string[]>(['hasar', 'ekip']);
-  const [legendOpen, setLegendOpen] = useState(false);
-  const legendAnim = useRef(new Animated.Value(0)).current;
+  const { damageReports, activeRoute, loading, error, fetchDamageReports } = useMap();
+  const { location } = useLocation();
 
-  const toggleLegend = () => {
-    const toValue = legendOpen ? 0 : 1;
-    setLegendOpen(!legendOpen);
-    Animated.spring(legendAnim, { toValue, useNativeDriver: true, speed: 18, bounciness: 4 }).start();
+  const [activeFilters, setActiveFilters] = useState<MapFilter[]>(['hasar']);
+  const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const panelAnim = useRef(new Animated.Value(0)).current;
+  const mapRef = useRef<MapView>(null);
+
+  const toggleFilter = (key: MapFilter) => {
+    setActiveFilters((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
   };
 
-  const filters = [
-    { key: 'hasar',    label: 'Hasar',    color: '#EF4444' },
-    { key: 'ekip',     label: 'Ekip',     color: '#1976D2' },
-    { key: 'toplanma', label: 'Toplanma', color: '#059669' },
-    { key: 'guzergah', label: 'Güzergah', color: '#7C3AED' },
-  ];
+  const togglePanel = () => {
+    const toValue = panelOpen ? 0 : 1;
+    setPanelOpen(!panelOpen);
+    Animated.spring(panelAnim, { toValue, useNativeDriver: true, speed: 18, bounciness: 4 }).start();
+  };
+
+  const goToMyLocation = () => {
+    if (!location || !mapRef.current) return;
+    mapRef.current.animateToRegion(
+      { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+      500,
+    );
+  };
+
+  const visibleReports = activeFilters.includes('hasar') ? damageReports : [];
+
+  // Alt panel yüksekliği: tab bar + içerik
+  const bottomOffset = insets.bottom + 90;
 
   return (
     <View style={styles.container}>
-      {/* Gradient tüm ekranı kaplar */}
-      <LinearGradient
-        colors={[gradient[0], gradient[1], gradient[2], bgEnd]}
-        locations={[0, 0.2, 0.42, 1]}
+      {/* ── Harita ──────────────────────────────────────────────────────── */}
+      <MapView
+        ref={mapRef}
         style={StyleSheet.absoluteFillObject}
-      />
+        initialRegion={TURKEY_REGION}
+        showsUserLocation={true}
+        showsMyLocationButton={false}
+        showsCompass={false}
+        mapPadding={{ top: 0, right: 0, bottom: bottomOffset, left: 0 }}
+      >
+        {/* Hasar pinleri */}
+        {visibleReports.map((report) => (
+          <DamageMarker
+            key={report.id}
+            report={report}
+            onPress={setSelectedReport}
+          />
+        ))}
 
-      {/* Hero */}
-      <View style={styles.hero}>
-        <FloatingBubbles color="#fff" />
+        {/* Güzergah */}
+        {activeFilters.includes('guzergah') && activeRoute && (
+          <RouteOverlay route={activeRoute} />
+        )}
+
+        {/* Kullanıcı konumu custom marker */}
+        {location && (
+          <Marker coordinate={location} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+            <View style={styles.myLocationDot}>
+              <View style={styles.myLocationInner} />
+            </View>
+          </Marker>
+        )}
+      </MapView>
+
+      {/* ── Üst gradient başlık ──────────────────────────────────────────── */}
+      <LinearGradient
+        colors={[gradient[0] + 'F0', gradient[1] + 'CC', 'transparent']}
+        locations={[0, 0.7, 1]}
+        style={[styles.header, { paddingTop: insets.top }]}
+        pointerEvents="box-none"
+      >
         <TopBar tint="light" />
-        <View style={styles.heroRow}>
-          <View style={styles.heroIconWrap}>
-            <Icon name="mapPin" size={22} color="#fff" strokeWidth={2.5} />
+        <View style={styles.headerContent}>
+          <View style={styles.headerIcon}>
+            <Icon name="mapPin" size={20} color="#fff" strokeWidth={2.5} />
           </View>
           <View>
-            <Text style={styles.heroTitle}>Deprem Haritası</Text>
-            <Text style={styles.heroSub}>Gerçek zamanlı bölge izleme</Text>
+            <Text style={styles.headerTitle}>Deprem Haritası</Text>
+            <Text style={styles.headerSub}>
+              {loading
+                ? 'Yükleniyor…'
+                : error
+                  ? 'Bağlantı hatası'
+                  : `${damageReports.length} hasar raporu`}
+            </Text>
           </View>
+          {loading && (
+            <ActivityIndicator color="#fff" size="small" style={{ marginLeft: 'auto' }} />
+          )}
         </View>
-        <View style={styles.statsRow}>
-          {quickStats.map((s, i) => (
-            <View key={i} style={styles.statChip}>
-              <Icon name={s.icon} size={13} color={s.color} strokeWidth={2.5} />
-              <Text style={styles.statVal}>{s.value}</Text>
-              <Text style={styles.statLbl}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
+      </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
-
-        {/* Filtreler */}
-        <View style={styles.filterBar}>
-          {filters.map(f => {
-            const isActive = activeFilters.includes(f.key);
+      {/* ── Filtre çubuğu ────────────────────────────────────────────────── */}
+      <View
+        style={[styles.filterBar, { top: insets.top + (Platform.OS === 'ios' ? 110 : 100) }]}
+        pointerEvents="box-none"
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
+          {FILTERS.map((f) => {
+            const active = activeFilters.includes(f.key);
             return (
               <TouchableOpacity
                 key={f.key}
                 activeOpacity={0.8}
-                onPress={() => setActiveFilters(prev =>
-                  prev.includes(f.key) ? prev.filter(k => k !== f.key) : [...prev, f.key]
-                )}
+                onPress={() => toggleFilter(f.key)}
                 style={[
                   styles.filterChip,
-                  isActive
+                  active
                     ? { backgroundColor: f.color, borderColor: f.color }
-                    : { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.4)' },
+                    : { backgroundColor: 'rgba(255,255,255,0.92)', borderColor: '#E2E8F0' },
                 ]}
               >
-                <View style={[styles.filterDot, { backgroundColor: isActive ? '#fff' : f.color }]} />
-                <Text style={[styles.filterText, { color: '#fff' }]}>{f.label}</Text>
+                <Icon
+                  name={f.icon}
+                  size={13}
+                  color={active ? '#fff' : f.color}
+                  strokeWidth={2.5}
+                />
+                <Text style={[styles.filterText, { color: active ? '#fff' : f.color }]}>
+                  {f.label}
+                </Text>
+                {f.key === 'hasar' && damageReports.length > 0 && (
+                  <View style={[styles.filterBadge, { backgroundColor: active ? 'rgba(255,255,255,0.3)' : f.color }]}>
+                    <Text style={styles.filterBadgeText}>{damageReports.length}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
+      </View>
 
-        {/* Harita placeholder */}
-        <View style={styles.mapArea}>
-          {[...Array(7)].map((_, i) => (
-            <View key={`h${i}`} style={[styles.gridLine, styles.gridH, { top: `${i * 16}%` as any }]} />
-          ))}
-          {[...Array(5)].map((_, i) => (
-            <View key={`v${i}`} style={[styles.gridLine, styles.gridV, { left: `${i * 25}%` as any }]} />
-          ))}
-          <View style={[styles.pin, styles.pinRed,   { top: '28%', left: '32%' }]} />
-          <View style={[styles.pin, styles.pinRed,   { top: '48%', left: '58%' }]} />
-          <View style={[styles.pin, styles.pinRed,   { top: '62%', left: '20%' }]} />
-          <View style={[styles.pin, styles.pinBlue,  { top: '35%', left: '72%' }]} />
-          <View style={[styles.pin, styles.pinBlue,  { top: '68%', left: '46%' }]} />
-          <View style={[styles.pin, styles.pinGreen, { top: '75%', left: '68%' }]} />
+      {/* ── Sağ araç çubuğu ──────────────────────────────────────────────── */}
+      <View style={[styles.toolBar, { bottom: bottomOffset + 16 }]}>
+        {/* Konumuma git */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={goToMyLocation}
+          style={styles.toolBtn}
+        >
+          <Icon name="mapPin" size={18} color="#1976D2" strokeWidth={2.5} />
+        </TouchableOpacity>
 
-          <View style={styles.mapCard}>
-            <View style={styles.mapCardIcon}>
-              <Icon name="mapPin" size={28} color="#1976D2" strokeWidth={1.5} />
-            </View>
-            <Text style={styles.mapCardTitle}>Harita Entegrasyonu</Text>
-            <Text style={styles.mapCardSub}>OpenStreetMap ile gerçek zamanlı{'\n'}deprem haritası yakında aktif olacak</Text>
-            <View style={styles.comingSoonBadge}>
-              <View style={styles.comingSoonDot} />
-              <Text style={styles.comingSoonText}>Geliştirme Aşamasında</Text>
-            </View>
+        {/* Yenile */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={fetchDamageReports}
+          style={styles.toolBtn}
+          disabled={loading}
+        >
+          {loading
+            ? <ActivityIndicator color="#1976D2" size="small" />
+            : <Icon name="alertTriangle" size={18} color="#1976D2" strokeWidth={2.5} />}
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Alt bilgi paneli ─────────────────────────────────────────────── */}
+      <View style={[styles.bottomCard, { bottom: bottomOffset + 8 }]}>
+        {/* Özet satırı */}
+        <TouchableOpacity activeOpacity={0.9} onPress={togglePanel} style={styles.summaryRow}>
+          <View style={styles.summaryChip}>
+            <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
+            <Text style={styles.summaryVal}>{damageReports.length}</Text>
+            <Text style={styles.summaryLbl}>Hasar</Text>
           </View>
-        </View>
-
-        {/* Aktif Uyarılar */}
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <LinearGradient colors={['#EF4444', '#F97316']} style={styles.sectionDot} />
-            <Text style={styles.sectionTitle}>AKTİF UYARILAR</Text>
+          <View style={styles.summaryChip}>
+            <View style={[styles.dot, { backgroundColor: '#059669' }]} />
+            <Text style={styles.summaryVal}>{activeRoute ? '1' : '0'}</Text>
+            <Text style={styles.summaryLbl}>Güzergah</Text>
           </View>
-          {alertBanners.map((a, i) => (
-            <View key={i} style={[styles.alertCard, { backgroundColor: a.bg, borderColor: a.border }]}>
-              <View style={[styles.alertLevel, { backgroundColor: a.color }]}>
-                <Text style={styles.alertLevelText}>{a.level}</Text>
+          <View style={styles.summaryChip}>
+            <View style={[styles.dot, { backgroundColor: location ? '#059669' : '#94A3B8' }]} />
+            <Text style={[styles.summaryVal, { color: location ? '#059669' : '#94A3B8' }]}>
+              {location ? 'Aktif' : 'Yok'}
+            </Text>
+            <Text style={styles.summaryLbl}>Konum</Text>
+          </View>
+          <Animated.View
+            style={{
+              transform: [{
+                rotate: panelAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }),
+              }],
+              marginLeft: 'auto',
+            }}
+          >
+            <Icon name="chevronDown" size={16} color="#64748B" strokeWidth={2.5} />
+          </Animated.View>
+        </TouchableOpacity>
+
+        {/* Genişletilmiş panel: hata / seçili rapor detayı */}
+        {panelOpen && (
+          <View style={styles.panelBody}>
+            {error ? (
+              <View style={styles.errorRow}>
+                <Icon name="alertTriangle" size={14} color="#EF4444" strokeWidth={2} />
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity onPress={fetchDamageReports} style={styles.retryBtn}>
+                  <Text style={styles.retryText}>Tekrar Dene</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.alertText}>{a.text}</Text>
-              <Icon name="alertTriangle" size={16} color={a.color} strokeWidth={2} />
-            </View>
-          ))}
-        </View>
-
-        {/* Katman Göstergesi */}
-        <View style={styles.section}>
-          <TouchableOpacity activeOpacity={0.8} onPress={toggleLegend} style={styles.legendBtn}>
-            <View style={styles.sectionRow}>
-              <LinearGradient colors={['#1976D2', '#42A5F5']} style={styles.sectionDot} />
-              <Text style={styles.sectionTitle}>HARİTA GÖSTERGESİ</Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: legendAnim.interpolate({ inputRange: [0,1], outputRange: ['0deg','180deg'] }) }] }}>
-              <Icon name="chevronDown" size={18} color="rgba(255,255,255,0.7)" strokeWidth={2.5} />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {legendOpen && (
-            <View style={styles.layersGrid}>
-              {mapLayers.map((layer, i) => (
-                <View key={i} style={[styles.layerCard, { backgroundColor: layer.bg, borderColor: layer.borderColor }]}>
-                  <View style={styles.layerCardTop}>
-                    <View style={[styles.pinCircle, { backgroundColor: layer.color }]}>
-                      <View style={styles.pinDot} />
-                    </View>
-                    <Text style={[styles.layerLabel, { color: layer.color }]}>{layer.label}</Text>
-                    <View style={[styles.badge, { backgroundColor: layer.active ? layer.color : '#CBD5E1' }]}>
-                      <Text style={styles.badgeText}>{layer.active ? 'Aktif' : 'Pasif'}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.layerCardBody}>
-                    <View style={[styles.layerIconBox, { backgroundColor: layer.color + '20' }]}>
-                      <Icon name={layer.icon} size={18} color={layer.color} strokeWidth={2} />
-                    </View>
-                    <Text style={styles.layerDesc}>{layer.desc}</Text>
-                  </View>
+            ) : selectedReport ? (
+              <View style={styles.reportDetail}>
+                <View style={styles.reportDetailRow}>
+                  <Text style={styles.reportDetailLabel}>Sınıf:</Text>
+                  <Text style={styles.reportDetailVal}>{selectedReport.damage_class ?? '—'}</Text>
                 </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        <View style={{ height: 20 }} />
-      </ScrollView>
+                <View style={styles.reportDetailRow}>
+                  <Text style={styles.reportDetailLabel}>Şiddet:</Text>
+                  <Text style={[styles.reportDetailVal, { color: '#EF4444' }]}>
+                    {selectedReport.severity != null ? `${selectedReport.severity}/10` : '—'}
+                  </Text>
+                </View>
+                <View style={styles.reportDetailRow}>
+                  <Text style={styles.reportDetailLabel}>Durum:</Text>
+                  <Text style={styles.reportDetailVal}>{selectedReport.status}</Text>
+                </View>
+                {selectedReport.description && (
+                  <Text style={styles.reportDesc} numberOfLines={3}>
+                    {selectedReport.description}
+                  </Text>
+                )}
+                <TouchableOpacity
+                  onPress={() => setSelectedReport(null)}
+                  style={styles.closeDetailBtn}
+                >
+                  <Text style={styles.closeDetailText}>Kapat</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={styles.panelHint}>
+                Haritadaki bir pine tıklayarak detayları görebilirsiniz.
+              </Text>
+            )}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#E8EAF0' },
 
-  hero: { paddingBottom: 20, overflow: 'hidden' },
-  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, marginBottom: 16 },
-  heroIconWrap: {
-    width: 44, height: 44, borderRadius: 13,
+  // Header
+  header: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    paddingBottom: 24,
+    zIndex: 10,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+  },
+  headerIcon: {
+    width: 40, height: 40, borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
   },
-  heroTitle: { fontSize: 22, fontWeight: '900', color: '#fff' },
-  heroSub:   { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  headerTitle: { fontSize: 20, fontWeight: '900', color: '#fff' },
+  headerSub:   { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 1 },
 
-  statsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20 },
-  statChip: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 12, paddingVertical: 9, paddingHorizontal: 10,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-  },
-  statVal: { fontSize: 15, fontWeight: '900', color: '#fff' },
-  statLbl: { fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: '700', flex: 1 },
-
+  // Filtreler
   filterBar: {
-    flexDirection: 'row', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 12,
+    position: 'absolute',
+    left: 0, right: 0,
+    zIndex: 10,
+  },
+  filterScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
   },
   filterChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 22,
-    borderWidth: 1.5,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 22, borderWidth: 1.5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
-  filterDot:  { width: 7, height: 7, borderRadius: 4 },
   filterText: { fontSize: 12, fontWeight: '700' },
+  filterBadge: {
+    borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1,
+  },
+  filterBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
 
-  mapArea: {
-    height: 230,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    marginHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+  // Araç çubuğu
+  toolBar: {
+    position: 'absolute', right: 16,
+    gap: 10, zIndex: 10,
   },
-  gridLine: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.1)' },
-  gridH: { left: 0, right: 0, height: 1 },
-  gridV: { top: 0, bottom: 0, width: 1 },
-  pin: {
-    position: 'absolute', width: 14, height: 14, borderRadius: 7,
-    borderWidth: 2.5, borderColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 4,
-  },
-  pinRed:   { backgroundColor: '#EF4444' },
-  pinBlue:  { backgroundColor: '#1976D2' },
-  pinGreen: { backgroundColor: '#059669' },
-
-  mapCard: {
-    backgroundColor: 'rgba(255,255,255,0.93)',
-    borderRadius: 20, padding: 20,
-    alignItems: 'center', width: '72%',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 10,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.6)',
-  },
-  mapCardIcon: {
-    width: 52, height: 52, borderRadius: 15,
-    backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-  },
-  mapCardTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 6 },
-  mapCardSub:   { fontSize: 12, color: '#64748B', textAlign: 'center', lineHeight: 18, marginBottom: 12 },
-  comingSoonBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FFF7ED', borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 5,
-    borderWidth: 1, borderColor: '#FED7AA',
-  },
-  comingSoonDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: '#F97316' },
-  comingSoonText: { fontSize: 11, fontWeight: '700', color: '#C2410C' },
-
-  section: { paddingHorizontal: 16, marginTop: 20 },
-  sectionRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionDot:  { width: 4, height: 18, borderRadius: 2 },
-  sectionTitle: { fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.85)', letterSpacing: 1 },
-
-  alertCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    borderWidth: 1.5, borderRadius: 16, padding: 14, marginTop: 10,
-  },
-  alertLevel: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0 },
-  alertLevelText: { fontSize: 11, fontWeight: '800', color: '#fff' },
-  alertText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#1E293B', lineHeight: 18 },
-
-  legendBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14,
-    marginBottom: 10,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
-  },
-  layersGrid: { gap: 10 },
-  layerCard: {
-    borderWidth: 1.5, borderRadius: 18, padding: 14,
-  },
-  layerCardTop:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  pinCircle: {
-    width: 20, height: 20, borderRadius: 10,
+  toolBtn: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: '#fff',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12, shadowRadius: 6, elevation: 6,
+    borderWidth: 1, borderColor: '#E2E8F0',
   },
-  pinDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' },
-  layerLabel: { flex: 1, fontSize: 15, fontWeight: '800' },
-  badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontSize: 11, fontWeight: '800', color: '#fff' },
-  layerCardBody: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  layerIconBox: {
-    width: 36, height: 36, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+
+  // Alt kart
+  bottomCard: {
+    position: 'absolute',
+    left: 16, right: 16,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12, shadowRadius: 16, elevation: 12,
+    borderWidth: 1, borderColor: '#F1F5F9',
+    zIndex: 10,
   },
-  layerDesc: { flex: 1, fontSize: 13, color: '#475569', lineHeight: 18, fontWeight: '500' },
+  summaryRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14,
+    gap: 4,
+  },
+  summaryChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#F8FAFC', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 6,
+    marginRight: 6,
+    borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  dot:         { width: 7, height: 7, borderRadius: 4 },
+  summaryVal:  { fontSize: 13, fontWeight: '800', color: '#1E293B' },
+  summaryLbl:  { fontSize: 10, color: '#64748B', fontWeight: '600' },
+
+  panelBody: {
+    borderTopWidth: 1, borderTopColor: '#F1F5F9',
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  panelHint: {
+    fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 18,
+  },
+
+  errorRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+  },
+  errorText: { flex: 1, fontSize: 12, color: '#EF4444', fontWeight: '500' },
+  retryBtn:  {
+    backgroundColor: '#FEE2E2', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  retryText: { fontSize: 11, fontWeight: '700', color: '#DC2626' },
+
+  reportDetail: { gap: 6 },
+  reportDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reportDetailLabel: { fontSize: 12, color: '#64748B', fontWeight: '600', width: 60 },
+  reportDetailVal:   { fontSize: 12, color: '#1E293B', fontWeight: '700' },
+  reportDesc: {
+    fontSize: 12, color: '#475569', lineHeight: 17,
+    backgroundColor: '#F8FAFC', borderRadius: 8,
+    padding: 8, marginTop: 4,
+  },
+  closeDetailBtn: {
+    alignSelf: 'flex-end', marginTop: 6,
+    backgroundColor: '#F1F5F9', borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 5,
+  },
+  closeDetailText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+
+  // Kullanıcı konum noktası
+  myLocationDot: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: 'rgba(25,118,210,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#1976D2',
+  },
+  myLocationInner: {
+    width: 9, height: 9, borderRadius: 5,
+    backgroundColor: '#1976D2',
+  },
 });

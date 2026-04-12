@@ -23,11 +23,7 @@ class Settings(BaseSettings): # Bu BaseSettings .env dosyasını ve sistem ortam
         "http://localhost:8000",
     ]
 
-    # --- Supabase ---
-    SUPABASE_URL: str = ""
-    SUPABASE_SERVICE_KEY: str = ""
-
-    # --- Veritabanı (Supabase: Transaction pooler veya doğrudan; Alembic için env.py 5432 kullanır) ---
+    # --- Veritabanı (PostgreSQL + PostGIS; Docker’da postgres servisi veya .env ile) ---
     DATABASE_URL: str = ""
 
     def _normalized_database_url(self) -> str:
@@ -69,9 +65,6 @@ class Settings(BaseSettings): # Bu BaseSettings .env dosyasını ve sistem ortam
 
     # --- AI Service ---
     ai_service_url: str = "http://ai:8001"
-
-    # --- Supabase Storage ---
-    supabase_storage_bucket: str = "damage-photos"
 
     # --- MinIO ---
     MINIO_ENDPOINT: str = "minio:9000"        # Docker içinde minio:9000, dışarıdan localhost:9000

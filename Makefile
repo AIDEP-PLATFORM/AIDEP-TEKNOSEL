@@ -13,7 +13,7 @@ help:
 	@echo "make down        -> Konteynerleri güvenle durdurur."
 	@echo "make logs        -> Servislerin canlı loglarını takip eder."
 	@echo "make migrate     -> Veritabanı tablolarını günceller (db-migrate servisini tetikler)."
-	@echo "make shell-db    -> Supabase DB bilgisi (psql komutu önerisi)."
+	@echo "make shell-db    -> Docker postgres (PostGIS) icin psql baglanti hatirlatmasi."
 	@echo "make shell-back  -> Backend konteynerinin içine (sh) bağlanır."
 	@echo "make shell-ai    -> AI konteynerinin içine (sh) bağlanır."
 	@echo "make test        -> Backend testlerini (Docker) çalıştırır."
@@ -58,8 +58,9 @@ migrate:
 	docker compose up db-migrate --build
 
 shell-db:
-	@echo "Veritabani Supabase (bulutta). Supabase Dashboard -> SQL Editor kullanin."
-	@echo "Yerel psql: .env icindeki DATABASE_URL degerini kullanin."
+	@echo "Docker postgres: localhost:5433 -> konteyner 5432 (compose port mapping)."
+	@echo "Ornek: psql postgresql://aidep:aidep_pass@localhost:5433/aidep"
+	@echo "Adminer: http://localhost:8080 (docker compose --profile dev)"
 
 shell-back:
 	@echo "Backend icine giriliyor..."

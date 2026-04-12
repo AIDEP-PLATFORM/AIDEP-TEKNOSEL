@@ -1,24 +1,25 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 // Layout
-import MainLayout from './components/layout/MainLayout';
+import MainLayout from "./components/layout/MainLayout";
 
+import DashboardPage from "./pages/DashboardPage";
+import ExercisesPage from "./pages/ExercisesPage";
+import MapPage from "./pages/MapPage";
+import ReportsPage from "./pages/ReportsPage";
+import RequestsPage from "./pages/RequestsPage";
+import Unauthorized from "./pages/Unauthorized";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 // Auth sayfaları
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
-import Unauthorized from './pages/Unauthorized';
-import DashboardPage from './pages/DashboardPage';
-import MapPage from './pages/MapPage';
-import RequestsPage from './pages/RequestsPage';
-import VolunteersPage from './pages/VolunteersPage';
-import ExercisesPage from './pages/ExercisesPage';
-import ReportsPage from './pages/ReportsPage';
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import StkCoordinationPage from "./pages/stk/StkCoordinationPage";
+import StkOrganizationPage from "./pages/stk/StkOrganizationPage";
 
 // Korumalı Rota (HOC) bileşenlerimiz
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import RoleRoute from './components/auth/RoleRoute';
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import RoleRoute from "./components/auth/RoleRoute";
 
 function App() {
   return (
@@ -33,24 +34,18 @@ function App() {
         {/* KORUMALI ROTALAR — ProtectedRoute → MainLayout → Sayfalar */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
-
             {/* Herkes girebilir (giriş yapmış) */}
             <Route path="/" element={<DashboardPage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/requests" element={<RequestsPage />} />
-            <Route path="/volunteers" element={<VolunteersPage />} />
+            <Route path="/organization" element={<StkOrganizationPage />} />
+            <Route path="/coordination" element={<StkCoordinationPage />} />
             <Route path="/reports" element={<ReportsPage />} />
 
             {/* Sadece admin girebilir */}
-            <Route element={<RoleRoute allowedRoles={['admin']} />}>
+            <Route element={<RoleRoute allowedRoles={["admin"]} />}>
               <Route path="/simulation" element={<ExercisesPage />} />
             </Route>
-
-            {/* Admin + STK girebilir */}
-            <Route element={<RoleRoute allowedRoles={['admin', 'stk']} />}>
-              {/* İleride eklenecek: <Route path="/stk-panel" element={<StkPanel />} /> */}
-            </Route>
-
           </Route>
         </Route>
 

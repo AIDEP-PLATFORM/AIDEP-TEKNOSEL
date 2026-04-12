@@ -27,6 +27,7 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
         tc_no=body.tc_no,
         full_name=body.full_name,
         city=body.city,
+        organization=body.organization,
         role=body.role,
     )
 

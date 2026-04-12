@@ -12,6 +12,7 @@ class UserBase(BaseModel):
     tc_no: str = Field(..., pattern=r"^\d{11}$", description="11 haneli TC Kimlik Numarası (zorunlu)")
     full_name: str = Field(..., min_length=2, description="Ad Soyad (zorunlu)")
     city: Optional[str] = Field(None, description="Yaşadığı şehir/ilçe (opsiyonel)")
+    organization: Optional[str] = Field(None, description="STK kurum adı (ngo rolü için)")
     role: str = "citizen"  # citizen | volunteer | ngo | admin
     is_active: bool = True
 

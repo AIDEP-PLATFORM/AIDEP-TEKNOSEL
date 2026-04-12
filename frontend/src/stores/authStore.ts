@@ -1,59 +1,68 @@
 import { create } from 'zustand';
-import { supabase } from '../core/supabase';
-import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import axiosInstance from '../core/api/axiosInstance';
+import { authEndpoints } from '../core/api/endpoints';
 
-export type Role = 'admin' | 'stk' | 'afad' | 'user' | null;
+export type Role = 'citizen' | 'volunteer' | 'ngo' | 'admin' | null;
 
 export interface User {
-  uid: string;
+  id: string;
   email: string;
+  full_name: string;
+  phone: string;
+  tc_no: string;
+  city?: string | null;
   role: Role;
+  organization?: string | null;
+  is_active?: boolean;
+  created_at?: string;
 }
 
 interface AuthState {
   user: User | null;
-  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 
-  setSession: (session: Session | null) => void;
-  logout: () => Promise<void>;
-}
-
-function mapSupabaseUser(supabaseUser: SupabaseUser): User {
-  return {
-    uid: supabaseUser.id,
-    email: supabaseUser.email ?? '',
-    role: (supabaseUser.user_metadata?.role as Role) ?? 'user',
-  };
+  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+  setUser: (user: User) => void;
+  fetchMe: () => Promise<void>;
+  logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  session: null,
   isAuthenticated: false,
   isLoading: true,
 
-  setSession: (session) => {
-    set({
-      session,
-      user: session?.user ? mapSupabaseUser(session.user) : null,
-      isAuthenticated: !!session,
-      isLoading: false,
-    });
+  setAuth: (user, accessToken, refreshToken) => {
+    localStorage.setItem('token', accessToken);
+    localStorage.setItem('refresh_token', refreshToken);
+    set({ user, isAuthenticated: true, isLoading: false });
   },
 
-  logout: async () => {
-    await supabase.auth.signOut();
-    set({ user: null, session: null, isAuthenticated: false });
+  setUser: (user) => set({ user, isAuthenticated: true, isLoading: false }),
+
+  fetchMe: async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      set({ isLoading: false });
+      return;
+    }
+    try {
+      const { data } = await axiosInstance.get<User>(authEndpoints.me);
+      set({ user: data, isAuthenticated: true, isLoading: false });
+    } catch {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      set({ user: null, isAuthenticated: false, isLoading: false });
+    }
+  },
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+    set({ user: null, isAuthenticated: false });
   },
 }));
 
-// Uygulama başladığında mevcut oturumu yükle ve değişiklikleri dinle
-supabase.auth.getSession().then(({ data: { session } }) => {
-  useAuthStore.getState().setSession(session);
-});
-
-supabase.auth.onAuthStateChange((_event, session) => {
-  useAuthStore.getState().setSession(session);
-});
+// Uygulama başladığında token varsa kullanıcıyı yükle
+useAuthStore.getState().fetchMe();

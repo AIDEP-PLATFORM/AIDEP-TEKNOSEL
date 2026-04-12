@@ -1,315 +1,232 @@
-import React, { useState } from 'react';
-import { Box, Button, Input, VStack, Text, Flex, Icon } from '@chakra-ui/react';
-import { Shield, Mail, Lock, LogIn } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { supabase } from '../../core/supabase';
-
-/* ── Animation variants ───────────────────────────────────────────────── */
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-  },
-};
-
-const itemVariants = {
-  hidden:  { y: 24, opacity: 0 },
-  visible: { y: 0,  opacity: 1, transition: { type: 'spring' as const, stiffness: 280, damping: 24 } },
-};
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Activity,
+  AlertTriangle,
+  Building2,
+  Eye,
+  EyeOff,
+  MapPin,
+  Shield,
+} from "lucide-react";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axiosInstance from "../../core/api/axiosInstance";
+import { authEndpoints } from "../../core/api/endpoints";
+import { useAuthStore } from "../../stores/authStore";
+import type { User } from "../../stores/authStore";
 
 const LoginPage = () => {
-  const [email,     setEmail]     = useState('');
-  const [password,  setPassword]  = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   const navigate = useNavigate();
+  const { setAuth } = useAuthStore();
 
   const handleLogin = async () => {
-    if (!email || !password) { setError('E-posta ve şifre zorunludur.'); return; }
+    if (!email || !password) {
+      setError("E-posta ve şifre zorunludur.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
-
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (authError) { setError('E-posta veya şifre hatalı.'); }
-    else           { navigate('/'); }
-
-    setIsLoading(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleLogin();
+    try {
+      const { data: tokens } = await axiosInstance.post<{
+        access_token: string;
+        refresh_token: string;
+      }>(authEndpoints.login, { email, password });
+      const { data: user } = await axiosInstance.get<User>(authEndpoints.me, {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      setAuth(user, tokens.access_token, tokens.refresh_token);
+      navigate("/");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: unknown } } })
+        ?.response?.data?.detail;
+      setError(
+        typeof detail === "string" ? detail : "E-posta veya şifre hatalı.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <Box
-      minH="100vh"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      position="relative"
-      overflow="hidden"
-      className="cmd-bg"
-    >
-      {/* ── Background decorations ────────────────────────────────── */}
-      {/* Top-right glow */}
-      <Box
-        position="absolute"
-        top="-120px"
-        right="-80px"
-        w="420px"
-        h="420px"
-        bg="rgba(229,62,62,0.08)"
-        borderRadius="full"
-        filter="blur(90px)"
-        pointerEvents="none"
-      />
-      {/* Bottom-left glow */}
-      <Box
-        position="absolute"
-        bottom="-100px"
-        left="-60px"
-        w="340px"
-        h="340px"
-        bg="rgba(59,130,246,0.07)"
-        borderRadius="full"
-        filter="blur(80px)"
-        pointerEvents="none"
-      />
+    <div className="auth-page">
+      {/* Gradient arka plan orb'ları */}
+      <div className="auth-orb auth-orb-1" />
+      <div className="auth-orb auth-orb-2" />
+      <div className="auth-orb auth-orb-3" />
 
-      {/* ── Card ──────────────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0,  scale: 1    }}
-        transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
-        style={{ width: '100%', maxWidth: 420, padding: '0 16px' }}
-      >
-        <Box
-          borderRadius="24px"
-          p={10}
-          style={{
-            background: 'rgba(13, 27, 53, 0.7)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(229,62,62,0.06)',
-          }}
+      {/* ── SOL PANEL ──────────────────────────────────────────────────── */}
+      <div className="auth-left">
+        {/* Logo */}
+        <div className="auth-left-logo">
+          <div className="auth-left-logo-icon">
+            <Shield size={22} color="white" />
+          </div>
+          <div className="auth-left-logo-text">
+            <span className="auth-left-logo-name">AIDEP</span>
+            <span className="auth-left-logo-sub">Afet Yönetim Sistemi</span>
+          </div>
+        </div>
+
+        {/* Orta içerik */}
+        <div className="auth-left-body">
+          <div>
+            <h1 className="auth-left-heading">
+              Afet müdahalesini
+              <br />
+              <span>koordine edin.</span>
+            </h1>
+            <p className="auth-left-desc">
+              STK yetkilileri için web paneli: hasar takibi, talepler ve harita
+              üzerinden kurumsal koordinasyon. Gönüllü işlemleri mobil
+              uygulamada.
+            </p>
+          </div>
+
+          <div className="auth-left-features">
+            <div className="auth-left-feature">
+              <div className="auth-left-feature-dot auth-left-feature-dot--red">
+                <Activity size={13} />
+              </div>
+              <div>
+                <div className="auth-left-feature-title">
+                  Canlı Hasar Takibi
+                </div>
+                <div className="auth-left-feature-sub">
+                  AI destekli YOLOv8 ile otomatik hasar sınıflandırması
+                </div>
+              </div>
+            </div>
+            <div className="auth-left-feature">
+              <div className="auth-left-feature-dot auth-left-feature-dot--blue">
+                <MapPin size={13} />
+              </div>
+              <div>
+                <div className="auth-left-feature-title">
+                  Coğrafi Harita Görünümü
+                </div>
+                <div className="auth-left-feature-sub">
+                  PostGIS destekli gerçek zamanlı konum izleme
+                </div>
+              </div>
+            </div>
+            <div className="auth-left-feature">
+              <div className="auth-left-feature-dot auth-left-feature-dot--green">
+                <Building2 size={13} />
+              </div>
+              <div>
+                <div className="auth-left-feature-title">
+                  Kurumsal koordinasyon
+                </div>
+                <div className="auth-left-feature-sub">
+                  STK hesabınızla talep ve saha görünümü
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="auth-left-footer">
+          © 2025 AIDEP Platform · Tüm hakları saklıdır.
+        </div>
+      </div>
+
+      {/* ── SAĞ PANEL ──────────────────────────────────────────────────── */}
+      <div className="auth-right">
+        <motion.div
+          className="auth-right-inner"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
         >
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {/* Logo */}
-            <motion.div variants={itemVariants}>
-              <Flex direction="column" align="center" mb={8}>
-                <motion.div
-                  className="floating"
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  transition={{ type: 'spring', stiffness: 300 }}
-                >
-                  <Box
-                    w="68px"
-                    h="68px"
-                    borderRadius="18px"
-                    bg="linear-gradient(135deg, #e53e3e 0%, #c53030 100%)"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    mb={4}
-                    boxShadow="0 0 30px rgba(229,62,62,0.45), 0 0 60px rgba(229,62,62,0.15)"
-                    className="glow-red"
-                  >
-                    <Icon color="white" style={{ width: 34, height: 34 }}>
-                      <Shield />
-                    </Icon>
-                  </Box>
-                </motion.div>
+          <div>
+            <h2 className="auth-right-title">Giriş Yap</h2>
+            <p className="auth-right-subtitle">
+              Hesabınıza erişmek için kimlik bilgilerinizi girin.
+            </p>
+          </div>
 
-                <Text
-                  fontSize="2xl"
-                  fontWeight="900"
-                  color="white"
-                  letterSpacing="widest"
-                  className="shimmer-text"
-                >
-                  AIDEP
-                </Text>
-                <Text color="whiteAlpha.500" fontSize="xs" mt={1} letterSpacing="wider">
-                  AFET YÖNETİM SİSTEMİ
-                </Text>
-                <Text color="whiteAlpha.500" fontSize="sm" mt={3} textAlign="center">
-                  Sisteme girmek için kimliğinizi doğrulayın.
-                </Text>
-              </Flex>
-            </motion.div>
-
-            {/* Form */}
-            <VStack gap={4} onKeyDown={handleKeyDown}>
+          <div className="auth-card">
+            <div className="auth-fields">
               {/* Email */}
-              <motion.div variants={itemVariants} style={{ width: '100%' }}>
-                <Box w="100%" position="relative">
-                  <Box
-                    position="absolute"
-                    left={3}
-                    top="50%"
-                    transform="translateY(-50%)"
-                    color="whiteAlpha.400"
-                    pointerEvents="none"
-                    zIndex={1}
-                    display="flex"
-                    alignItems="center"
-                  >
-                    <Mail size={15} />
-                  </Box>
-                  <Input
-                    pl={9}
-                    placeholder="E-posta"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    borderRadius="12px"
-                    h="46px"
-                    fontSize="sm"
-                    color="white"
-                    bg="rgba(255,255,255,0.05)"
-                    border="1px solid rgba(255,255,255,0.1)"
-                    _placeholder={{ color: 'whiteAlpha.400' }}
-                    _focus={{
-                      borderColor: 'rgba(229,62,62,0.6)',
-                      boxShadow: '0 0 0 3px rgba(229,62,62,0.15)',
-                      bg: 'rgba(255,255,255,0.07)',
-                    }}
-                    _hover={{ borderColor: 'rgba(255,255,255,0.2)' }}
-                  />
-                </Box>
-              </motion.div>
+              <input
+                className="auth-input"
+                type="email"
+                placeholder="E-posta adresi"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                autoComplete="email"
+              />
 
-              {/* Password */}
-              <motion.div variants={itemVariants} style={{ width: '100%' }}>
-                <Box w="100%" position="relative">
-                  <Box
-                    position="absolute"
-                    left={3}
-                    top="50%"
-                    transform="translateY(-50%)"
-                    color="whiteAlpha.400"
-                    pointerEvents="none"
-                    zIndex={1}
-                    display="flex"
-                    alignItems="center"
-                  >
-                    <Lock size={15} />
-                  </Box>
-                  <Input
-                    pl={9}
-                    type="password"
-                    placeholder="Şifre"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    borderRadius="12px"
-                    h="46px"
-                    fontSize="sm"
-                    color="white"
-                    bg="rgba(255,255,255,0.05)"
-                    border="1px solid rgba(255,255,255,0.1)"
-                    _placeholder={{ color: 'whiteAlpha.400' }}
-                    _focus={{
-                      borderColor: 'rgba(229,62,62,0.6)',
-                      boxShadow: '0 0 0 3px rgba(229,62,62,0.15)',
-                      bg: 'rgba(255,255,255,0.07)',
-                    }}
-                    _hover={{ borderColor: 'rgba(255,255,255,0.2)' }}
-                  />
-                </Box>
-              </motion.div>
-
-              {/* Error */}
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{ width: '100%' }}
+              {/* Şifre */}
+              <div className="auth-input-wrap">
+                <input
+                  className="auth-input"
+                  type={showPass ? "text" : "password"}
+                  placeholder="Şifre"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="auth-eye-btn"
+                  onClick={() => setShowPass((v) => !v)}
+                  tabIndex={-1}
                 >
-                  <Box
-                    px={4}
-                    py={3}
-                    borderRadius="10px"
-                    bg="rgba(229,62,62,0.12)"
-                    border="1px solid rgba(229,62,62,0.25)"
-                  >
-                    <Text color="#ff7777" fontSize="sm" fontWeight="500">
-                      {error}
-                    </Text>
-                  </Box>
-                </motion.div>
-              )}
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
 
-              {/* Submit */}
-              <motion.div
-                variants={itemVariants}
-                style={{ width: '100%' }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
+              {/* Hata */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    className="auth-error"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                  >
+                    <AlertTriangle size={14} />
+                    {error}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Buton */}
+              <motion.button
+                className="auth-btn"
+                onClick={handleLogin}
+                disabled={isLoading}
+                whileHover={{ scale: isLoading ? 1 : 1.015 }}
+                whileTap={{ scale: isLoading ? 1 : 0.975 }}
               >
-                <Button
-                  w="100%"
-                  h="46px"
-                  borderRadius="12px"
-                  fontWeight="700"
-                  fontSize="sm"
-                  letterSpacing="wide"
-                  loading={isLoading}
-                  onClick={handleLogin}
-                  style={{
-                    background: 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)',
-                    boxShadow: '0 4px 20px rgba(229,62,62,0.4)',
-                    color: 'white',
-                    border: 'none',
-                  }}
-                  _hover={{
-                    boxShadow: '0 6px 28px rgba(229,62,62,0.6)',
-                  }}
-                  _active={{ transform: 'scale(0.98)' }}
-                  transition="all 0.2s"
-                  gap={2}
-                >
-                  <LogIn size={16} />
-                  Giriş Yap
-                </Button>
-              </motion.div>
-            </VStack>
+                {isLoading ? <span className="auth-spinner" /> : "Giriş Yap"}
+              </motion.button>
+            </div>
 
-            {/* Alt linkler */}
-            <motion.div variants={itemVariants}>
-              <Flex justify="space-between" mt={6}>
-                <Link to="/forgot-password">
-                  <Text
-                    color="whiteAlpha.500"
-                    fontSize="xs"
-                    _hover={{ color: '#ff7777' }}
-                    transition="color 0.2s"
-                  >
-                    Şifremi Unuttum
-                  </Text>
+            <div className="auth-card-footer">
+              <span>
+                Hesabınız yok mu?{" "}
+                <Link to="/register" className="auth-link">
+                  Kayıt Ol
                 </Link>
-                <Link to="/register">
-                  <Text
-                    color="whiteAlpha.500"
-                    fontSize="xs"
-                    _hover={{ color: '#ff7777' }}
-                    transition="color 0.2s"
-                  >
-                    Kayıt Ol (STK/AFAD)
-                  </Text>
-                </Link>
-              </Flex>
-            </motion.div>
-          </motion.div>
-        </Box>
-      </motion.div>
-    </Box>
+              </span>
+              <Link to="/forgot-password" className="auth-link">
+                Şifremi unuttum
+              </Link>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
   );
 };
 

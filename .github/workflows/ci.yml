@@ -41,12 +41,8 @@ jobs:
       - name: Set dummy env for compose interpolation
         run: |
           echo "DATABASE_URL=postgresql://u:p@host:5432/db" >> $GITHUB_ENV
-          echo "SUPABASE_URL=https://x.supabase.co" >> $GITHUB_ENV
-          echo "SUPABASE_SERVICE_KEY=dummy" >> $GITHUB_ENV
           echo "REDIS_PASSWORD=dummy" >> $GITHUB_ENV
           echo "MINIO_ACCESS_KEY=dummy" >> $GITHUB_ENV
           echo "MINIO_SECRET_KEY=dummy" >> $GITHUB_ENV
-          echo "VITE_SUPABASE_URL=https://x.supabase.co" >> $GITHUB_ENV
-          echo "VITE_SUPABASE_ANON_KEY=dummy" >> $GITHUB_ENV
       - name: Docker Compose Build
         run: docker compose build

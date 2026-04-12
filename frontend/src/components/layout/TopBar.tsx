@@ -8,12 +8,13 @@ import { useAuthStore } from '../../stores/authStore';
 import { motion } from 'framer-motion';
 
 const routeNames: Record<string, string> = {
-  '':           'Dashboard',
-  'map':        'Canlı Harita',
-  'requests':   'Talepler',
-  'volunteers': 'Gönüllüler',
-  'simulation': 'Tatbikatlar',
-  'reports':    'Raporlar',
+  '':              'Dashboard',
+  'map':           'Canlı Harita',
+  'requests':      'Talepler',
+  'organization':  'Kurum',
+  'coordination':  'Koordinasyon',
+  'simulation':    'Tatbikatlar',
+  'reports':       'Raporlar',
 };
 
 const TopBar: React.FC = () => {

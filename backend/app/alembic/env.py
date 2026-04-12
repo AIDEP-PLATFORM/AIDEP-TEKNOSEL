@@ -15,7 +15,7 @@ if config.config_file_name:
 
 target_metadata = Base.metadata
 
-# Supabase: transaction pooler (6543) yerine migration için doğrudan DB portu (5432)
+# Havuzlayıcı portu (ör. 6543) varsa migration için doğrudan PostgreSQL portu (5432) kullan
 alembic_url = settings.DATABASE_URL_SYNC.replace(":6543", ":5432")
 config.set_main_option("sqlalchemy.url", alembic_url)
 

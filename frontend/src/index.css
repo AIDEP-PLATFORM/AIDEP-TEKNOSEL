@@ -97,3 +97,633 @@ body { background: #060d1f; font-family: 'Inter', system-ui, sans-serif; }
 
 /* Focus ring override */
 *:focus-visible { outline: 2px solid rgba(229, 62, 62, 0.6); outline-offset: 2px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   AUTH PAGES — tüm stiller
+   ══════════════════════════════════════════════════════════════════════ */
+
+@keyframes auth-spin    { to { transform: rotate(360deg); } }
+@keyframes auth-orb-1 {
+  0%,100% { transform: translate(0,0)       scale(1);    }
+  33%     { transform: translate(60px,-80px) scale(1.12); }
+  66%     { transform: translate(-40px,50px) scale(0.92); }
+}
+@keyframes auth-orb-2 {
+  0%,100% { transform: translate(0,0)        scale(1);    }
+  40%     { transform: translate(-80px,70px)  scale(1.15); }
+  75%     { transform: translate(50px,-50px)  scale(0.88); }
+}
+@keyframes auth-orb-3 {
+  0%,100% { transform: translate(0,0)       scale(1);   }
+  50%     { transform: translate(40px,-90px) scale(1.2); }
+}
+@keyframes auth-stripe {
+  0%   { background-position: 0% 50%;   }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%;   }
+}
+@keyframes auth-border-spin {
+  to { --angle: 360deg; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   AUTH SAYFASI LAYOUT
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Tam sayfa kapsayıcı */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  background: #060d1f;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Arkaplan gradient mesh ─────────────────────────────────────────── */
+.auth-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 60% at 75% 10%,  rgba(229,62,62,0.13)   0%, transparent 65%),
+    radial-gradient(ellipse 55% 55% at 15% 85%,  rgba(59,130,246,0.11)  0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 85% 80%,  rgba(168,85,247,0.07)  0%, transparent 60%),
+    radial-gradient(ellipse 35% 45% at 10% 20%,  rgba(229,62,62,0.06)   0%, transparent 60%);
+  z-index: 0;
+}
+
+/* Grid doku */
+.auth-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 44px 44px;
+  z-index: 0;
+}
+
+/* Animasyonlu orb'lar */
+.auth-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(90px);
+  z-index: 0;
+}
+.auth-orb-1 {
+  width: 500px; height: 500px;
+  top: -150px; right: -80px;
+  background: radial-gradient(circle, rgba(229,62,62,0.2) 0%, transparent 70%);
+  animation: auth-orb-1 20s ease-in-out infinite;
+}
+.auth-orb-2 {
+  width: 420px; height: 420px;
+  bottom: -100px; left: -60px;
+  background: radial-gradient(circle, rgba(59,130,246,0.16) 0%, transparent 70%);
+  animation: auth-orb-2 25s ease-in-out infinite;
+}
+.auth-orb-3 {
+  width: 280px; height: 280px;
+  top: 45%; left: 40%;
+  background: radial-gradient(circle, rgba(229,62,62,0.07) 0%, transparent 70%);
+  animation: auth-orb-3 16s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   SOL PANEL — marka alanı
+   ════════════════════════════════════════════════════════════════════════ */
+.auth-left {
+  flex: 0 0 420px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px 44px;
+  background: linear-gradient(160deg, #0d1b35 0%, #0a1022 55%, #080d1e 100%);
+  border-right: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+
+/* Sol panel iç dekorasyon */
+.auth-left::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: -60px;
+  width: 300px; height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(229,62,62,0.15) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+}
+.auth-left::after {
+  content: '';
+  position: absolute;
+  bottom: -80px; right: -40px;
+  width: 260px; height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* Sol panel logo */
+.auth-left-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+.auth-left-logo-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 20px rgba(229,62,62,0.5), 0 0 40px rgba(229,62,62,0.15);
+  flex-shrink: 0;
+}
+.auth-left-logo-text {
+  display: flex;
+  flex-direction: column;
+}
+.auth-left-logo-name {
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  background: linear-gradient(90deg, #e53e3e 0%, #f97316 45%, #e53e3e 90%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+.auth-left-logo-sub {
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+/* Sol panel orta içerik */
+.auth-left-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+  position: relative;
+  z-index: 1;
+}
+.auth-left-heading {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #f1f5f9;
+}
+.auth-left-heading span {
+  background: linear-gradient(90deg, #e53e3e, #f97316);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.auth-left-desc {
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.65;
+  max-width: 300px;
+}
+
+/* Feature listesi */
+.auth-left-features {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.auth-left-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.auth-left-feature-dot {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+.auth-left-feature-dot--red  { background: rgba(229,62,62,0.15); color: #fca5a5; }
+.auth-left-feature-dot--blue { background: rgba(59,130,246,0.15); color: #93c5fd; }
+.auth-left-feature-dot--green{ background: rgba(16,185,129,0.15); color: #6ee7b7; }
+.auth-left-feature-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.auth-left-feature-sub {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.4;
+}
+
+/* Sol panel alt */
+.auth-left-footer {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.22);
+  position: relative;
+  z-index: 1;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   SAĞ PANEL — form alanı
+   ════════════════════════════════════════════════════════════════════════ */
+.auth-right {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+}
+
+.auth-right-inner {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Sağ panel başlık ───────────────────────────────────────────────── */
+.auth-right-title {
+  font-size: 1.75rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #f1f5f9;
+  text-align: center;
+}
+.auth-right-subtitle {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.38);
+  text-align: center;
+  margin-top: 6px;
+  line-height: 1.55;
+}
+
+/* ── Step indicator ─────────────────────────────────────────────────── */
+.auth-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+.auth-step-circle {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  background: rgba(255,255,255,0.05);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3);
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.auth-step-circle.active {
+  background: linear-gradient(135deg, #e53e3e, #c53030);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 0 18px rgba(229,62,62,0.55), 0 0 36px rgba(229,62,62,0.2);
+}
+.auth-step-line {
+  width: 72px; height: 2px;
+  background: rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
+}
+.auth-step-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #e53e3e, #f97316);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+.auth-step-line.filled::after { transform: scaleX(1); }
+
+/* ── Kart ───────────────────────────────────────────────────────────── */
+.auth-card {
+  width: 100%;
+  position: relative;
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  background: linear-gradient(145deg, rgba(13,27,53,0.65) 0%, rgba(8,14,30,0.75) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 0 0 1px rgba(229,62,62,0.08),
+    0 28px 70px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 -1px 0 rgba(229,62,62,0.04);
+  overflow: hidden;
+}
+
+/* Kart üstü ince gradient çizgi */
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(229,62,62,0.5) 30%,
+    rgba(249,115,22,0.5) 50%,
+    rgba(229,62,62,0.5) 70%,
+    transparent 100%
+  );
+}
+
+.auth-card-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.auth-card-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 5px;
+}
+.auth-card-header p {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.38);
+  line-height: 1.55;
+}
+
+/* ── Form alanları ──────────────────────────────────────────────────── */
+.auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.auth-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 15px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #f1f5f9;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+.auth-input::placeholder { color: rgba(255,255,255,0.28); }
+.auth-input:hover  { border-color: rgba(255,255,255,0.16); background: rgba(255,255,255,0.065); }
+.auth-input:focus  {
+  border-color: rgba(229,62,62,0.45);
+  background: rgba(255,255,255,0.07);
+  box-shadow: 0 0 0 3px rgba(229,62,62,0.1), inset 0 0 0 1px rgba(229,62,62,0.05);
+}
+
+.auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.auth-input-wrap .auth-input { padding-right: 44px; }
+.auth-eye-btn {
+  position: absolute;
+  right: 13px;
+  background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,0.3);
+  display: flex; align-items: center;
+  transition: color 0.2s; padding: 0;
+}
+.auth-eye-btn:hover { color: rgba(255,255,255,0.65); }
+
+/* ── Hata kutusu ────────────────────────────────────────────────────── */
+.auth-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  background: rgba(229,62,62,0.1);
+  border: 1px solid rgba(229,62,62,0.2);
+  color: #fca5a5;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ── Buton ──────────────────────────────────────────────────────────── */
+.auth-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e53e3e 0%, #b91c1c 100%);
+  border: none;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(229,62,62,0.4), inset 0 1px 0 rgba(255,255,255,0.12);
+  transition: box-shadow 0.2s, transform 0.15s, opacity 0.2s;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+.auth-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+.auth-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 28px rgba(229,62,62,0.58), inset 0 1px 0 rgba(255,255,255,0.16);
+  transform: translateY(-1px);
+}
+.auth-btn:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 12px rgba(229,62,62,0.4); }
+.auth-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.auth-btn--ghost {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: none;
+  color: rgba(255,255,255,0.55);
+  width: auto;
+  padding: 0 18px;
+}
+.auth-btn--ghost::after { display: none; }
+.auth-btn--ghost:hover:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+  box-shadow: none; transform: translateY(-1px);
+}
+
+.auth-btn-row { display: flex; gap: 10px; align-items: center; }
+
+/* Spinner */
+.auth-spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.22);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: auth-spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+/* ── Rol seçimi ─────────────────────────────────────────────────────── */
+.auth-role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.auth-role-grid--2col {
+  grid-template-columns: repeat(2, 1fr);
+}
+.auth-role-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.auth-role-card {
+  padding: 11px 6px;
+  border-radius: 11px;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.22s;
+  display: flex; flex-direction: column; gap: 3px;
+  font-family: inherit;
+}
+.auth-role-card:hover {
+  border-color: rgba(229,62,62,0.3);
+  background: rgba(229,62,62,0.06);
+}
+.auth-role-card.selected {
+  border-color: rgba(229,62,62,0.55);
+  background: linear-gradient(135deg, rgba(229,62,62,0.12), rgba(249,115,22,0.06));
+  box-shadow: 0 0 16px rgba(229,62,62,0.15);
+}
+.auth-role-label {
+  font-size: 0.78rem; font-weight: 700;
+  color: rgba(255,255,255,0.7);
+}
+.auth-role-card.selected .auth-role-label { color: #fca5a5; }
+.auth-role-desc {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.28);
+  line-height: 1.3;
+}
+.auth-role-card.selected .auth-role-desc { color: rgba(252,165,165,0.55); }
+
+/* ── Kart alt link ──────────────────────────────────────────────────── */
+.auth-card-footer {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.32);
+  flex-wrap: wrap; gap: 4px;
+}
+.auth-link {
+  color: #f87171;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.auth-link:hover { color: #fca5a5; }
+
+/* ── Başarı kutusu ──────────────────────────────────────────────────── */
+.auth-success-box {
+  position: relative; z-index: 1;
+  background: linear-gradient(145deg, rgba(13,27,53,0.7), rgba(8,14,30,0.8));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 48px 40px;
+  text-align: center;
+  max-width: 400px; width: 100%;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 28px 70px rgba(0,0,0,0.55);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.auth-success-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(16,185,129,0.6), rgba(59,130,246,0.5), transparent);
+}
+.auth-success-box h2 { font-size: 1.3rem; font-weight: 800; color: #f1f5f9; }
+.auth-success-box p  { font-size: 0.85rem; color: rgba(255,255,255,0.4); }
+.auth-progress-bar {
+  width: 100%; height: 3px; border-radius: 99px;
+  background: rgba(255,255,255,0.07); overflow: hidden; margin-top: 4px;
+}
+.auth-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e53e3e, #f97316, #10b981);
+  border-radius: 99px;
+}
+
+/* ── Şifremi Unuttum — özel öğeler ─────────────────────────────────── */
+.forgot-sent-icon {
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(229,62,62,0.15), rgba(249,115,22,0.1));
+  border: 1.5px solid rgba(229,62,62,0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: #fca5a5;
+  box-shadow: 0 0 28px rgba(229,62,62,0.2), 0 0 60px rgba(229,62,62,0.08);
+}
+
+.forgot-info-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.18);
+  color: rgba(147,197,253,0.85);
+  font-size: 0.78rem;
+}
+.forgot-info-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #60a5fa;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(96,165,250,0.7);
+}
+
+.forgot-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(255,255,255,0.35);
+  font-size: 0.78rem;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.forgot-back-link:hover { color: #f87171; }
+
+/* ── Responsive — sol panel gizle ──────────────────────────────────── */
+@media (max-width: 860px) {
+  .auth-left { display: none; }
+  .auth-right { padding: 32px 20px; }
+}
