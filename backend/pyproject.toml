@@ -130,5 +130,6 @@ skip_covered = false
 # MVP: düşük kapsamda CI kırılmasın; ürün olgunlaştıkça yükseltin (ör. 70).
 fail_under = 0
 
-[tool.setuptools]
-packages = ["app"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
