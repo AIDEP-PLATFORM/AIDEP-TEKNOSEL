@@ -1,6 +1,7 @@
 import { Box, Flex, Icon, IconButton, Separator, Text } from "@chakra-ui/react";
 import { AnimatePresence, type Variants, motion } from "framer-motion";
 import {
+  Activity,
   Building2,
   ChevronLeft,
   ChevronRight,
@@ -25,6 +26,7 @@ interface SidebarProps {
 const baseNavItems = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
   { name: "Harita", path: "/map", icon: MapIcon },
+  { name: "Depremler", path: "/earthquakes", icon: Activity },
   { name: "Talepler", path: "/requests", icon: ClipboardList },
   { name: "Kurum", path: "/organization", icon: Building2 },
   { name: "Koordinasyon", path: "/coordination", icon: Radio },
@@ -76,8 +78,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       initial={false}
       style={{
         height: "100vh",
-        background: "linear-gradient(180deg, #0d1b35 0%, #070e20 100%)",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
+        background:
+          "linear-gradient(175deg, #1a2332 0%, #141c28 42%, #0f1419 100%)",
+        borderRight: "1px solid rgba(255,255,255,0.08)",
         display: "flex",
         flexDirection: "column",
         position: "relative",
@@ -94,7 +97,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         transform="translateX(-50%)"
         w="180px"
         h="80px"
-        bg="rgba(229,62,62,0.1)"
+        bg="rgba(232,93,93,0.07)"
         borderRadius="full"
         filter="blur(32px)"
         pointerEvents="none"
@@ -106,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         alignItems="center"
         justifyContent={isCollapsed ? "center" : "flex-start"}
         px={isCollapsed ? 0 : 6}
-        borderBottom="1px solid rgba(255,255,255,0.06)"
+        borderBottom="1px solid rgba(255,255,255,0.08)"
         flexShrink={0}
         gap={3}
         position="relative"
@@ -124,11 +127,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             w="38px"
             h="38px"
             borderRadius="10px"
-            bg="linear-gradient(135deg, #e53e3e 0%, #c53030 100%)"
+            bg="linear-gradient(135deg, #e87878 0%, #d65f5f 100%)"
             display="flex"
             alignItems="center"
             justifyContent="center"
-            boxShadow="0 0 18px rgba(229,62,62,0.45)"
+            boxShadow="0 0 16px rgba(232,93,93,0.28)"
             flexShrink={0}
           >
             <Icon color="white" style={{ width: 20, height: 20 }}>
@@ -213,21 +216,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                         borderRadius="12px"
                         cursor="pointer"
                         position="relative"
-                        bg={isActive ? "rgba(229,62,62,0.12)" : "transparent"}
+                        bg={isActive ? "rgba(232,93,93,0.1)" : "transparent"}
                         border="1px solid"
                         borderColor={
-                          isActive ? "rgba(229,62,62,0.22)" : "transparent"
+                          isActive ? "rgba(232,93,93,0.2)" : "transparent"
                         }
-                        color={isActive ? "white" : "rgba(148,163,184,0.8)"}
+                        color={isActive ? "white" : "rgba(203,213,225,0.88)"}
                         transition="all 0.2s ease"
                         _hover={{
                           bg: isActive
-                            ? "rgba(229,62,62,0.15)"
-                            : "rgba(255,255,255,0.05)",
+                            ? "rgba(232,93,93,0.14)"
+                            : "rgba(255,255,255,0.06)",
                           color: "white",
                           borderColor: isActive
-                            ? "rgba(229,62,62,0.3)"
-                            : "rgba(255,255,255,0.08)",
+                            ? "rgba(232,93,93,0.28)"
+                            : "rgba(255,255,255,0.1)",
                         }}
                       >
                         {/* Active glow bar */}
@@ -252,9 +255,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                                 height: "20px",
                                 borderRadius: "0 3px 3px 0",
                                 background:
-                                  "linear-gradient(to bottom, #ff5555, #e53e3e)",
+                                  "linear-gradient(to bottom, #f87171, #e87878)",
                                 boxShadow:
-                                  "0 0 10px rgba(229,62,62,0.8), 0 0 20px rgba(229,62,62,0.3)",
+                                  "0 0 8px rgba(232,93,93,0.45), 0 0 16px rgba(232,93,93,0.15)",
                               }}
                             />
                           )}
@@ -262,11 +265,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
                         {/* Icon */}
                         <Box
-                          color={isActive ? "#ff5555" : "inherit"}
+                          color={isActive ? "#fca5a5" : "inherit"}
                           display="flex"
                           style={{
                             filter: isActive
-                              ? "drop-shadow(0 0 6px rgba(229,62,62,0.6))"
+                              ? "drop-shadow(0 0 5px rgba(232,93,93,0.35))"
                               : "none",
                           }}
                         >
@@ -303,7 +306,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       </motion.div>
 
       {/* ── Separator ───────────────────────────────────────────────── */}
-      <Separator borderColor="rgba(255,255,255,0.06)" />
+      <Separator borderColor="rgba(255,255,255,0.08)" />
 
       {/* ── Collapse Toggle ─────────────────────────────────────────── */}
       <Flex p={4} justifyContent={isCollapsed ? "center" : "flex-end"}>

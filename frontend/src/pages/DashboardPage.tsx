@@ -9,12 +9,9 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import {
-  fetchDamageReports,
-  fetchTeams,
-  fetchVolunteers,
-} from "../api/aidepApi";
 import StkGlassCard from "../components/stk/StkGlassCard";
+import damageService from "../services/damage.service";
+import volunteerService from "../services/volunteer.service";
 import { useAuthStore } from "../stores/authStore";
 
 const QuickLink: React.FC<{
@@ -30,12 +27,12 @@ const QuickLink: React.FC<{
         cursor="pointer"
         transition="border-color 0.2s, box-shadow 0.2s"
         _hover={{
-          borderColor: "rgba(229,62,62,0.35)",
-          boxShadow: "0 12px 48px rgba(229,62,62,0.12)",
+          borderColor: "rgba(232,93,93,0.28)",
+          boxShadow: "0 12px 40px rgba(232,93,93,0.08)",
         }}
       >
         <Flex align="flex-start" gap={3}>
-          <Box color="#ff5555">{icon}</Box>
+          <Box color="#f87171">{icon}</Box>
           <Box>
             <Text fontSize="sm" fontWeight="700" color="white" mb={1}>
               {title}
@@ -64,9 +61,9 @@ export default function DashboardPage() {
       setLoadErr(null);
       try {
         const [dmg, teams, vols] = await Promise.all([
-          fetchDamageReports({ limit: 1, skip: 0 }),
-          fetchTeams().catch(() => []),
-          fetchVolunteers().catch(() => []),
+          damageService.fetchAll({ limit: 1, skip: 0 }),
+          volunteerService.fetchTeams().catch(() => []),
+          volunteerService.fetchVolunteers().catch(() => []),
         ]);
         if (cancelled) return;
         setDamageTotal(dmg.total);
@@ -101,9 +98,9 @@ export default function DashboardPage() {
           <Box>
             <Badge
               mb={2}
-              bg="rgba(229,62,62,0.12)"
-              color="#fca5a5"
-              border="1px solid rgba(229,62,62,0.22)"
+              bg="rgba(232,93,93,0.1)"
+              color="#fecaca"
+              border="1px solid rgba(232,93,93,0.2)"
               fontSize="10px"
               letterSpacing="wider"
             >
@@ -147,7 +144,7 @@ export default function DashboardPage() {
               >
                 HASAR RAPORLARI
               </Text>
-              <Activity size={18} color="#ff5555" />
+              <Activity size={18} color="#f87171" />
             </Flex>
             <Text fontSize="2xl" fontWeight="800" color="white">
               {damageTotal === null ? "—" : damageTotal}
@@ -166,7 +163,7 @@ export default function DashboardPage() {
               >
                 EKİPLER
               </Text>
-              <ClipboardList size={18} color="#ff5555" />
+              <ClipboardList size={18} color="#f87171" />
             </Flex>
             <Text fontSize="2xl" fontWeight="800" color="white">
               {teamCount === null ? "—" : teamCount}
@@ -185,7 +182,7 @@ export default function DashboardPage() {
               >
                 GÖNÜLLÜLER
               </Text>
-              <MapIcon size={18} color="#ff5555" />
+              <MapIcon size={18} color="#f87171" />
             </Flex>
             <Text fontSize="2xl" fontWeight="800" color="white">
               {volunteerCount === null ? "—" : volunteerCount}

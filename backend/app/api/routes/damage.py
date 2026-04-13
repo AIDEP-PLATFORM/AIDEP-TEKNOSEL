@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.db import get_db
+from app.api.routes.websocket import ws_manager
 from app.crud.damage_report import (
     create_damage_report,
     get_damage_report_by_id,
@@ -92,7 +93,24 @@ async def create_report(
         status="verified" if ai_result else "analyzing",
     )
 
-    return _to_response(report, lat, lng)
+    response = _to_response(report, lat, lng)
+
+    # Bağlı tüm STK panellerine gerçek zamanlı bildirim gönder
+    await ws_manager.broadcast({
+        "type": "new_damage",
+        "data": {
+            "id": str(response.id),
+            "lat": response.lat,
+            "lng": response.lng,
+            "damage_class": response.damage_class,
+            "severity": response.severity,
+            "status": response.status,
+            "description": response.description,
+            "created_at": response.created_at.isoformat() if response.created_at else None,
+        },
+    })
+
+    return response
 
 
 @router.get("", response_model=DamageReportListResponse)

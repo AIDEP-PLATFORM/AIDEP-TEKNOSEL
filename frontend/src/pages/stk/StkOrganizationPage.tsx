@@ -2,7 +2,7 @@ import { Badge, Box, Flex, Grid, Text } from "@chakra-ui/react";
 import { Building2, Mail, User } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { patchUserProfile } from "../../api/aidepApi";
+import userService from "../../services/user.service";
 import StkGlassCard from "../../components/stk/StkGlassCard";
 import StkPageShell from "../../components/stk/StkPageShell";
 import type { User as StoreUser } from "../../stores/authStore";
@@ -82,7 +82,7 @@ const StkOrganizationPage: React.FC = () => {
     setOk(false);
     setSaving(true);
     try {
-      const raw = (await patchUserProfile({
+      const raw = (await userService.patchProfile({
         full_name: fullName.trim(),
         phone: phone.trim(),
         city: city.trim() || null,

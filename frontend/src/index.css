@@ -2,18 +2,25 @@
 
 /* ── Custom Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: #060d1f; }
-::-webkit-scrollbar-thumb { background: #1a2f50; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #2d5a8e; }
+::-webkit-scrollbar-track { background: rgba(15, 20, 28, 0.6); }
+::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.45); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.55); }
 
 /* ── Global ───────────────────────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
-body { background: #060d1f; font-family: 'Inter', system-ui, sans-serif; }
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(96, 165, 250, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 90% 70% at 0% 100%, rgba(232, 93, 93, 0.06) 0%, transparent 50%),
+    linear-gradient(165deg, #121a26 0%, #0f1419 38%, #0c1118 100%);
+  font-family: 'Inter', system-ui, sans-serif;
+}
 
 /* ── Keyframe Animations ──────────────────────────────────────────────── */
 @keyframes pulse-glow-red {
-  0%, 100% { box-shadow: 0 0 6px rgba(229, 62, 62, 0.4); }
-  50%       { box-shadow: 0 0 22px rgba(229, 62, 62, 0.9), 0 0 40px rgba(229, 62, 62, 0.3); }
+  0%, 100% { box-shadow: 0 0 5px rgba(232, 93, 93, 0.25); }
+  50%       { box-shadow: 0 0 14px rgba(232, 93, 93, 0.45), 0 0 28px rgba(232, 93, 93, 0.12); }
 }
 
 @keyframes pulse-glow-green {
@@ -65,29 +72,32 @@ body { background: #060d1f; font-family: 'Inter', system-ui, sans-serif; }
 
 /* Command-center grid texture on main content */
 .cmd-bg {
-  background-color: #060d1f;
+  background-color: transparent;
   background-image:
-    linear-gradient(rgba(255,255,255,0.024) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.024) 1px, transparent 1px);
-  background-size: 40px 40px;
+    radial-gradient(ellipse 85% 60% at 15% 20%, rgba(96, 165, 250, 0.05) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 55% at 85% 75%, rgba(232, 93, 93, 0.04) 0%, transparent 50%),
+    linear-gradient(160deg, rgba(18, 26, 38, 0.97) 0%, rgba(12, 17, 24, 0.98) 45%, rgba(15, 20, 28, 0.97) 100%),
+    linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+  background-size: auto, auto, auto, 40px 40px, 40px 40px;
 }
 
 /* Glassmorphism helper */
 .glass {
-  background: rgba(13, 27, 53, 0.55);
+  background: rgba(30, 41, 59, 0.42);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.09);
 }
 
 /* Shimmer text */
 .shimmer-text {
-  background: linear-gradient(90deg, #e53e3e 0%, #f6a623 40%, #e53e3e 80%);
+  background: linear-gradient(90deg, #e88787 0%, #f0b27a 42%, #e88787 82%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: shimmer 3s linear infinite;
+  animation: shimmer 4.5s ease-in-out infinite;
 }
 
 /* Nav active glow bar */
@@ -96,7 +106,7 @@ body { background: #060d1f; font-family: 'Inter', system-ui, sans-serif; }
 }
 
 /* Focus ring override */
-*:focus-visible { outline: 2px solid rgba(229, 62, 62, 0.6); outline-offset: 2px; }
+*:focus-visible { outline: 2px solid rgba(232, 93, 93, 0.45); outline-offset: 2px; }
 
 /* ══════════════════════════════════════════════════════════════════════
    AUTH PAGES — tüm stiller
@@ -134,7 +144,10 @@ body { background: #060d1f; font-family: 'Inter', system-ui, sans-serif; }
 .auth-page {
   min-height: 100vh;
   display: flex;
-  background: #060d1f;
+  background:
+    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(96, 165, 250, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 90% 70% at 0% 100%, rgba(232, 93, 93, 0.05) 0%, transparent 50%),
+    linear-gradient(165deg, #121a26 0%, #0f1419 38%, #0c1118 100%);
   position: relative;
   overflow: hidden;
 }
@@ -146,10 +159,10 @@ body { background: #060d1f; font-family: 'Inter', system-ui, sans-serif; }
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 70% 60% at 75% 10%,  rgba(229,62,62,0.13)   0%, transparent 65%),
-    radial-gradient(ellipse 55% 55% at 15% 85%,  rgba(59,130,246,0.11)  0%, transparent 65%),
-    radial-gradient(ellipse 40% 40% at 85% 80%,  rgba(168,85,247,0.07)  0%, transparent 60%),
-    radial-gradient(ellipse 35% 45% at 10% 20%,  rgba(229,62,62,0.06)   0%, transparent 60%);
+    radial-gradient(ellipse 70% 60% at 75% 10%,  rgba(232,93,93,0.09)   0%, transparent 65%),
+    radial-gradient(ellipse 55% 55% at 15% 85%,  rgba(96,165,250,0.08)  0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 85% 80%,  rgba(167,139,250,0.05)  0%, transparent 60%),
+    radial-gradient(ellipse 35% 45% at 10% 20%,  rgba(232,93,93,0.04)   0%, transparent 60%);
   z-index: 0;
 }
 
@@ -204,8 +217,8 @@ body { background: #060d1f; font-family: 'Inter', system-ui, sans-serif; }
   flex-direction: column;
   justify-content: space-between;
   padding: 48px 44px;
-  background: linear-gradient(160deg, #0d1b35 0%, #0a1022 55%, #080d1e 100%);
-  border-right: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(165deg, #1a2332 0%, #141c28 48%, #0f1419 100%);
+  border-right: 1px solid rgba(255,255,255,0.08);
   overflow: hidden;
 }
 
