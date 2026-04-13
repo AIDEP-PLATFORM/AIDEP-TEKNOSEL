@@ -1,6 +1,6 @@
-import axiosInstance from './axiosInstance';
-import { authEndpoints } from './endpoints';
-import type { User } from '../../stores/authStore';
+import axiosInstance from "../core/api/axiosInstance";
+import { authEndpoints } from "../core/api/endpoints";
+import type { User } from "../stores/authStore";
 
 export interface RegisterPayload {
   email: string;
@@ -8,7 +8,7 @@ export interface RegisterPayload {
   phone: string;
   tc_no: string;
   full_name: string;
-  role: 'ngo';
+  role: "ngo";
   organization: string;
   city?: string;
 }
@@ -39,6 +39,17 @@ const authService = {
       headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
     });
     return data;
+  },
+
+  async refresh(refreshToken: string): Promise<AuthTokens> {
+    const { data } = await axiosInstance.post<AuthTokens>(authEndpoints.refresh, {
+      refresh_token: refreshToken,
+    });
+    return data;
+  },
+
+  async forgotPassword(email: string): Promise<void> {
+    await axiosInstance.post(authEndpoints.forgotPassword, { email });
   },
 };
 

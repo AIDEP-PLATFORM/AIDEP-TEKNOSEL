@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import MainLayout from "./components/layout/MainLayout";
 
 import DashboardPage from "./pages/DashboardPage";
+import EarthquakePage from "./pages/EarthquakePage";
 import ExercisesPage from "./pages/ExercisesPage";
 import MapPage from "./pages/MapPage";
 import ReportsPage from "./pages/ReportsPage";
@@ -37,6 +38,7 @@ function App() {
             {/* Herkes girebilir (giriş yapmış) */}
             <Route path="/" element={<DashboardPage />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/earthquakes" element={<EarthquakePage />} />
             <Route path="/requests" element={<RequestsPage />} />
             <Route path="/organization" element={<StkOrganizationPage />} />
             <Route path="/coordination" element={<StkCoordinationPage />} />

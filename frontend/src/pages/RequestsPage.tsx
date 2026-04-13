@@ -3,20 +3,17 @@ import type React from "react";
 import StkGlassCard from "../components/stk/StkGlassCard";
 import StkPageShell from "../components/stk/StkPageShell";
 
-/**
- * Backend'de /requests router'ı henüz boş; STK panelinde bilgilendirme.
- */
 const RequestsPage: React.FC = () => (
   <StkPageShell
     title="Talepler"
-    subtitle="Yardım talepleri API eklendiğinde bu sayfa /requests uçlarına bağlanacak."
+    subtitle="Vatandaşlardan gelen yardım talepleri burada listelenecek. Bu modül henüz aktif değil."
   >
     <StkGlassCard p={6}>
       <Text color="whiteAlpha.800" fontSize="sm" lineHeight="tall">
-        Şu an FastAPI tarafında talep endpoint’leri tanımlı değil. Hasar
-        raporları ve ekip atamaları için <strong>Harita</strong>,{" "}
-        <strong>Koordinasyon</strong> ve <strong>Raporlar</strong> bölümlerini
-        kullanın.
+        Yardım talep modülü şu an geliştirme aşamasındadır. Hasar kayıtlarını
+        izlemek için <strong>Harita</strong> ve <strong>Raporlar</strong>,
+        saha koordinasyonu için <strong>Koordinasyon</strong> sayfasını
+        kullanabilirsiniz.
       </Text>
     </StkGlassCard>
   </StkPageShell>

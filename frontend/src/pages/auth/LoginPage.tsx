@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import authService from "../../core/api/auth.service";
+import authService from "../../services/auth.service";
 import { useAuthStore } from "../../stores/authStore";
 
 const LoginPage = () => {
