@@ -39,3 +39,19 @@ class TeamStatusUpdate(BaseModel):
 
 class TeamAddMember(BaseModel):
     volunteer_id: UUID
+
+
+class TeamMemberLocation(BaseModel):
+    volunteer_id: UUID
+    lat: Optional[float]
+    lng: Optional[float]
+
+
+class TeamLocationResponse(BaseModel):
+    team_id: UUID
+    team_name: str
+    status: str
+    assigned_damage_id: Optional[UUID]
+    damage_lat: Optional[float]
+    damage_lng: Optional[float]
+    members: list[TeamMemberLocation]

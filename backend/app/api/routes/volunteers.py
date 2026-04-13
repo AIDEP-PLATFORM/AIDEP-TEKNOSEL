@@ -30,6 +30,7 @@ from app.crud.volunteer import (
     create_team, get_team_by_id, get_teams,
     assign_team_to_damage, update_team_status,
     get_team_member_count, add_volunteer_to_team,
+    get_teams_with_member_locations,
 )
 from app.crud.damage_report import get_damage_report_by_id
 from app.models.user import User
@@ -37,7 +38,7 @@ from app.schemas.volunteer import (
     VolunteerCreate, VolunteerLocationUpdate,
     VolunteerAvailabilityUpdate, VolunteerResponse,
 )
-from app.schemas.team import TeamCreate, TeamResponse, TeamAssign, TeamStatusUpdate, TeamAddMember
+from app.schemas.team import TeamCreate, TeamResponse, TeamAssign, TeamStatusUpdate, TeamAddMember, TeamLocationResponse
 
 router = APIRouter()
 
@@ -135,6 +136,20 @@ async def list_teams(
         raise HTTPException(status_code=403, detail="Yetkiniz yok")
     teams = await get_teams(db, status=team_status, organization=organization)
     return [await _team_to_response(db, t) for t in teams]
+
+
+@router.get("/teams/locations", response_model=list[TeamLocationResponse])
+async def get_all_team_locations(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Tüm ekiplerin üye konumlarını ve atandıkları hasar noktasını döndürür.
+    Web haritası için kullanılır (STK Yetkilisi).
+    """
+    if current_user.role not in STK_ROLES:
+        raise HTTPException(status_code=403, detail="Yetkiniz yok")
+    return await get_teams_with_member_locations(db)
 
 
 @router.get("/teams/{team_id}", response_model=TeamResponse)

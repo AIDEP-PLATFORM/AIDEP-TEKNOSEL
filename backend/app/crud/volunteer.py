@@ -154,3 +154,65 @@ async def add_volunteer_to_team(
     await db.flush()
     await db.refresh(volunteer)
     return volunteer
+
+
+async def get_teams_with_member_locations(db: AsyncSession) -> list[dict]:
+    """
+    Tüm ekiplerin üye konumlarını ve atandıkları hasar noktasını döndürür.
+    Harita görünümü için kullanılır.
+    """
+    from sqlalchemy import text
+
+    # Ekipleri çek
+    teams_result = await db.execute(select(Team))
+    teams = list(teams_result.scalars().all())
+
+    # Gönüllü konumlarını ST_X/ST_Y ile çek
+    members_sql = await db.execute(text("""
+        SELECT id, team_id,
+               ST_Y(current_location::geometry) AS lat,
+               ST_X(current_location::geometry) AS lng
+        FROM volunteers
+        WHERE team_id IS NOT NULL
+    """))
+    members_rows = members_sql.fetchall()
+
+    # Hasar noktası konumlarını çek
+    damage_sql = await db.execute(text("""
+        SELECT id,
+               ST_Y(location::geometry) AS lat,
+               ST_X(location::geometry) AS lng
+        FROM damage_reports
+    """))
+    damage_rows = {str(row.id): (row.lat, row.lng) for row in damage_sql.fetchall()}
+
+    # Ekip bazlı grupla
+    members_by_team: dict = {}
+    for row in members_rows:
+        tid = str(row.team_id)
+        if tid not in members_by_team:
+            members_by_team[tid] = []
+        members_by_team[tid].append({
+            "volunteer_id": row.id,
+            "lat": row.lat,
+            "lng": row.lng,
+        })
+
+    result = []
+    for team in teams:
+        tid = str(team.id)
+        damage_lat, damage_lng = None, None
+        if team.assigned_damage_id:
+            damage_lat, damage_lng = damage_rows.get(str(team.assigned_damage_id), (None, None))
+
+        result.append({
+            "team_id": team.id,
+            "team_name": team.name,
+            "status": team.status,
+            "assigned_damage_id": team.assigned_damage_id,
+            "damage_lat": damage_lat,
+            "damage_lng": damage_lng,
+            "members": members_by_team.get(tid, []),
+        })
+
+    return result
