@@ -11,8 +11,8 @@ export const ENDPOINTS = {
     DETAIL: (id: string) => `/damage/${id}`,
   },
   ROUTES: {
-    CALCULATE: '/routes/calculate',
-    GET:       (id: string) => `/routes/${id}`,
+    CALCULATE: '/routing/calculate',
+    GET:       (id: string) => `/routing/${id}`,
   },
   VOLUNTEERS: {
     LIST:   '/volunteers',

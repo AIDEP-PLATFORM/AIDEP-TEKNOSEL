@@ -16,6 +16,10 @@
     "plugins": [
       "expo-location",
       "expo-image-picker"
-    ]
+    ],
+    "updates": {
+      "enabled": false,
+      "fallbackToCacheTimeout": 0
+    }
   }
 }
