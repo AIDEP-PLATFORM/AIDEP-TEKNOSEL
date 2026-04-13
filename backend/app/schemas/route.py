@@ -4,6 +4,14 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class RouteStep(BaseModel):
+    instruction: str          # Türkçe yön talimatı: "Sağa dön", "Düz devam et"
+    distance_meters: float    # Bu adımın mesafesi
+    duration_seconds: float   # Bu adımın süresi
+    street_name: str          # Sokak/cadde adı
+    location: List[float]     # [lng, lat] — talimatın verileceği nokta
+
+
 class RouteCalculateRequest(BaseModel):
     start_lat: float
     start_lng: float
@@ -17,7 +25,8 @@ class RouteResponse(BaseModel):
     id: UUID
     volunteer_id: Optional[UUID]
     request_id: Optional[UUID]
-    coordinates: List[List[float]]  # [[lng, lat], [lng, lat], ...]
+    coordinates: List[List[float]]  # [[lng, lat], ...]
+    steps: List[RouteStep] = []     # Adım adım yön talimatları
     duration_seconds: Optional[int]
     distance_meters: Optional[float]
     risk_score: Optional[float]

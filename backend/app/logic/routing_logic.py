@@ -78,6 +78,56 @@ def _calculate_risk_score(
     return round(score, 2)
 
 
+def _maneuver_to_turkish(maneuver_type: str, modifier: str) -> str:
+    """OSRM maneuver tipini Türkçe yön talimatına çevirir."""
+    if maneuver_type == "depart":
+        return "Başlangıç noktasından hareket et"
+    if maneuver_type == "arrive":
+        return "Hedefe ulaştınız"
+    if maneuver_type in ("turn", "new name"):
+        mapping = {
+            "right": "Sağa dön",
+            "left": "Sola dön",
+            "slight right": "Hafif sağa dön",
+            "slight left": "Hafif sola dön",
+            "sharp right": "Keskin sağa dön",
+            "sharp left": "Keskin sola dön",
+            "straight": "Düz devam et",
+            "uturn": "Geri dön",
+        }
+        return mapping.get(modifier, "Düz devam et")
+    if maneuver_type == "roundabout":
+        return "Dönel kavşağa gir"
+    if maneuver_type == "fork":
+        return "Sağ yoldan devam et" if "right" in modifier else "Sol yoldan devam et"
+    if maneuver_type == "merge":
+        return "Yola birleş"
+    return "Düz devam et"
+
+
+def _extract_steps(osrm_route: dict) -> list:
+    """
+    OSRM route objesinden adım adım yön talimatlarını çıkarır.
+    Her leg'in steps listesini birleştirir.
+    """
+    steps = []
+    for leg in osrm_route.get("legs", []):
+        for step in leg.get("steps", []):
+            maneuver = step.get("maneuver", {})
+            maneuver_type = maneuver.get("type", "")
+            modifier = maneuver.get("modifier", "straight")
+            location = maneuver.get("location", [0, 0])
+
+            steps.append({
+                "instruction": _maneuver_to_turkish(maneuver_type, modifier),
+                "distance_meters": step.get("distance", 0),
+                "duration_seconds": step.get("duration", 0),
+                "street_name": step.get("name", ""),
+                "location": location,
+            })
+    return steps
+
+
 async def calculate_and_save_route(
     db: AsyncSession,
     start_lat: float,
@@ -137,4 +187,7 @@ async def calculate_and_save_route(
         request_id=request_id,
     )
 
-    return saved_route, best_coords
+    # Adım adım yön talimatlarını çıkar
+    steps = _extract_steps(best_route)
+
+    return saved_route, best_coords, steps
