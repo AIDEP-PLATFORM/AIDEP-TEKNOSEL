@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, Image, ActivityIndicator,
+  StyleSheet, ScrollView, Image, ActivityIndicator, Modal,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import colors from '../../../shared/theme/colors';
 import Icon from '../../../shared/components/Icon';
 import AnimatedPress from '../../../shared/components/AnimatedPress';
 import TopBar from '../../../shared/components/TopBar';
 import FloatingBubbles from '../../../shared/components/FloatingBubbles';
 import { useAuthStore } from '../../../core/stores/auth.store';
+import { useMapStore } from '../../../core/stores/map.store';
 import api from '../../../core/api/axiosInstance';
 import { showToast } from '../../../shared/components/Toast';
+
+// Yolun geçilemez olduğunu belirten sınıflar
+const ROAD_BLOCKED_CLASSES = new Set([
+  'yol_yikilmis', 'yol_gecilemez', 'yol_cok_hasarli',
+]);
 
 const reportTypes = [
   { key: 'yikilanbina',  label: 'Yıkılan Bina',     color: '#DC2626', bg: '#FEF2F2', icon: 'shield'        as const, desc: 'Kısmi veya tam çökmüş yapı' },
@@ -61,6 +68,8 @@ const roleCardBg: Record<string, string> = {
 
 export default function ReportScreen() {
   const { user } = useAuthStore();
+  const { triggerRouteModal } = useMapStore();
+  const navigation = useNavigation<any>();
   const role = user?.role ?? 'citizen';
   const gradient = roleGradients[role] ?? roleGradients.citizen;
 
@@ -71,6 +80,7 @@ export default function ReportScreen() {
   const [focusedField, setFocusedField] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [aiResult, setAiResult] = useState<{ damage_class: string | null; severity: number | null; status: string } | null>(null);
+  const [routeSuggestVisible, setRouteSuggestVisible] = useState(false);
 
   const requestLocation = async (): Promise<{ lat: number; lon: number } | null> => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -174,6 +184,11 @@ export default function ReportScreen() {
       setDescription('');
       setPhotos([]);
       setLocation(null);
+
+      // Yol geçilemez ise güzergah öner
+      if (data.damage_class && ROAD_BLOCKED_CLASSES.has(data.damage_class)) {
+        setRouteSuggestVisible(true);
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.detail ?? 'Rapor gönderilemedi. Lütfen tekrar deneyin.';
       showToast(typeof msg === 'string' ? msg : 'Rapor gönderilemedi.', 'error');
@@ -398,6 +413,40 @@ export default function ReportScreen() {
           <View style={{ height: 110 }} />
         </ScrollView>
       </View>
+
+      {/* Yol Geçilemez — Güzergah Öner Modal */}
+      <Modal visible={routeSuggestVisible} transparent animationType="fade" onRequestClose={() => setRouteSuggestVisible(false)}>
+        <View style={styles.routeModalOverlay}>
+          <View style={styles.routeModalCard}>
+            <View style={styles.routeModalIcon}>
+              <Text style={{ fontSize: 36 }}>🚧</Text>
+            </View>
+            <Text style={styles.routeModalTitle}>Yol Geçilemez!</Text>
+            <Text style={styles.routeModalDesc}>
+              AI analizi bu bölgedeki yolun geçilemez durumda olduğunu tespit etti.
+              Alternatif güzergah hesaplamak ister misiniz?
+            </Text>
+            <TouchableOpacity
+              style={styles.routeModalBtn}
+              activeOpacity={0.85}
+              onPress={() => {
+                setRouteSuggestVisible(false);
+                triggerRouteModal();
+                navigation.navigate('Harita');
+              }}
+            >
+              <Icon name="mapPin" size={16} color="#fff" strokeWidth={2.5} />
+              <Text style={styles.routeModalBtnText}>Yeni Güzergah Hesapla</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.routeModalSkipBtn}
+              onPress={() => setRouteSuggestVisible(false)}
+            >
+              <Text style={styles.routeModalSkipText}>Şimdi değil</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -527,4 +576,33 @@ const styles = StyleSheet.create({
   },
   infoCardNum: { fontSize: 22, fontWeight: '900', color: '#fff' },
   infoCardLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.9)', textAlign: 'center' },
+
+  // Güzergah öneri modal
+  routeModalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  routeModalCard: {
+    backgroundColor: '#fff', borderRadius: 24, padding: 28,
+    alignItems: 'center', width: '100%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 20,
+  },
+  routeModalIcon: {
+    width: 72, height: 72, borderRadius: 20,
+    backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
+  },
+  routeModalTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B', marginBottom: 10 },
+  routeModalDesc: {
+    fontSize: 14, color: '#475569', textAlign: 'center', lineHeight: 21, marginBottom: 24,
+  },
+  routeModalBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#7C3AED', borderRadius: 14,
+    paddingVertical: 14, paddingHorizontal: 24, width: '100%', justifyContent: 'center',
+    shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 6,
+  },
+  routeModalBtnText: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  routeModalSkipBtn: { marginTop: 12, padding: 8 },
+  routeModalSkipText: { fontSize: 14, color: '#94A3B8', fontWeight: '600' },
 });

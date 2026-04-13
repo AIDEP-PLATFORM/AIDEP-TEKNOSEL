@@ -1,7 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, ActivityIndicator, Platform,
+  ScrollView, ActivityIndicator, Platform, TextInput, Modal,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,31 +11,36 @@ import TopBar from '../../../shared/components/TopBar';
 import { useMap } from '../hooks/useMap';
 import { useLocation } from '../../../shared/hooks/useLocation';
 import { useAuthStore } from '../../../core/stores/auth.store';
-import type { DamageReport, MapFilter } from '../types';
+import { useMapStore } from '../../../core/stores/map.store';
+import { showToast } from '../../../shared/components/Toast';
+import type { DamageReport, MapFilter, Route } from '../types';
 
 const TURKEY_CENTER = { lat: 38.9, lng: 35.5, zoom: 6 };
 
 const roleGradients: Record<string, [string, string]> = {
-  citizen: ['#1565C0', '#1976D2'],
+  citizen:   ['#1565C0', '#1976D2'],
   volunteer: ['#1B5E20', '#2E7D32'],
-  admin: ['#4A148C', '#7B1FA2'],
+  admin:     ['#4A148C', '#7B1FA2'],
 };
 
 const FILTERS: { key: MapFilter; label: string; color: string; icon: 'alertTriangle' | 'users' | 'mapPin' | 'shield' }[] = [
-  { key: 'hasar', label: 'Hasar', color: '#EF4444', icon: 'alertTriangle' },
-  { key: 'ekip', label: 'Ekip', color: '#1976D2', icon: 'users' },
-  { key: 'toplanma', label: 'Toplanma', color: '#059669', icon: 'mapPin' },
-  { key: 'guzergah', label: 'Güzergah', color: '#7C3AED', icon: 'shield' },
+  { key: 'hasar',    label: 'Hasar',    color: '#EF4444', icon: 'alertTriangle' },
+  { key: 'ekip',     label: 'Ekip',     color: '#1976D2', icon: 'users'         },
+  { key: 'toplanma', label: 'Toplanma', color: '#059669', icon: 'mapPin'        },
+  { key: 'guzergah', label: 'Güzergah', color: '#7C3AED', icon: 'shield'        },
 ];
 
-function buildLeafletHTML(reports: DamageReport[], userLat?: number, userLng?: number) {
+function buildLeafletHTML(
+  reports: DamageReport[],
+  route: Route | null,
+  userLat?: number,
+  userLng?: number,
+) {
   const markersJson = JSON.stringify(
     reports
       .filter(r => r.lat != null && r.lng != null)
       .map(r => ({
-        id: r.id,
-        lat: r.lat,
-        lng: r.lng,
+        id: r.id, lat: r.lat, lng: r.lng,
         severity: r.severity,
         damage_class: r.damage_class ?? 'Hasar Raporu',
         status: r.status,
@@ -43,6 +48,11 @@ function buildLeafletHTML(reports: DamageReport[], userLat?: number, userLng?: n
         created_at: r.created_at,
       }))
   );
+
+  // Backend [[lng, lat], ...] formatında gönderiyor
+  const routeLatLngs = route
+    ? JSON.stringify(route.coordinates.map(c => [c.lat, c.lng]))
+    : 'null';
 
   const userMarker = userLat != null
     ? `L.circleMarker([${userLat}, ${userLng}], {
@@ -64,15 +74,9 @@ function buildLeafletHTML(reports: DamageReport[], userLat?: number, userLng?: n
     .custom-pin {
       width: 24px; height: 24px; border-radius: 50%;
       border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-      display: flex; align-items: center; justify-content: center;
     }
-    .leaflet-popup-content-wrapper {
-      border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.18);
-    }
-    .popup-header {
-      padding: 8px 12px; border-radius: 10px 10px 0 0;
-      font-weight: 700; font-size: 13px; color: #fff;
-    }
+    .leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.18); }
+    .popup-header { padding: 8px 12px; border-radius: 10px 10px 0 0; font-weight: 700; font-size: 13px; color: #fff; }
     .popup-body { padding: 10px 12px; font-size: 12px; color: #1E293B; }
     .popup-row { margin-bottom: 4px; }
     .popup-desc { color: #475569; margin-top: 4px; line-height: 1.4; }
@@ -84,10 +88,10 @@ function buildLeafletHTML(reports: DamageReport[], userLat?: number, userLng?: n
 <script>
   var map = L.map('map', { zoomControl: true }).setView([${TURKEY_CENTER.lat}, ${TURKEY_CENTER.lng}], ${TURKEY_CENTER.zoom});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19,
+    attribution: '© OpenStreetMap', maxZoom: 19,
   }).addTo(map);
 
+  // Hasar pinleri
   var markers = ${markersJson};
   markers.forEach(function(r) {
     var color = r.severity >= 7 ? '#DC2626' : r.severity >= 4 ? '#D97706' : '#059669';
@@ -95,8 +99,7 @@ function buildLeafletHTML(reports: DamageReport[], userLat?: number, userLng?: n
     var icon = L.divIcon({
       className: '',
       html: '<div class="custom-pin" style="background:' + color + '"></div>',
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+      iconSize: [24, 24], iconAnchor: [12, 12],
     });
     var date = new Date(r.created_at).toLocaleDateString('tr-TR');
     var popup = '<div class="popup-header" style="background:' + color + '">' + r.damage_class + '</div>' +
@@ -104,8 +107,7 @@ function buildLeafletHTML(reports: DamageReport[], userLat?: number, userLng?: n
       (r.severity ? '<div class="popup-row">Şiddet: <b style="color:' + color + '">' + r.severity + '/10</b></div>' : '') +
       '<div class="popup-row">Durum: ' + r.status + '</div>' +
       (r.description ? '<div class="popup-desc">' + r.description + '</div>' : '') +
-      '<div class="popup-date">' + date + '</div>' +
-      '</div>';
+      '<div class="popup-date">' + date + '</div></div>';
     L.marker([r.lat, r.lng], { icon: icon })
       .addTo(map)
       .bindPopup(popup, { maxWidth: 220 })
@@ -116,8 +118,28 @@ function buildLeafletHTML(reports: DamageReport[], userLat?: number, userLng?: n
 
   ${userMarker}
 
+  // Rota çizimi
+  var routeLayer = null;
+  var routeCoords = ${routeLatLngs};
+  if (routeCoords && routeCoords.length > 1) {
+    // Gölge çizgi
+    L.polyline(routeCoords, { color: 'rgba(0,0,0,0.15)', weight: 8, lineJoin: 'round' }).addTo(map);
+    // Ana rota
+    routeLayer = L.polyline(routeCoords, { color: '#7C3AED', weight: 4, lineJoin: 'round' }).addTo(map);
+    // Başlangıç marker
+    L.circleMarker(routeCoords[0], { radius: 8, color: '#059669', fillColor: '#059669', fillOpacity: 1, weight: 2 })
+      .addTo(map).bindPopup('<b>Başlangıç</b>');
+    // Bitiş marker
+    L.circleMarker(routeCoords[routeCoords.length - 1], { radius: 8, color: '#DC2626', fillColor: '#DC2626', fillOpacity: 1, weight: 2 })
+      .addTo(map).bindPopup('<b>Hedef</b>');
+    map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+  }
+
   window.goToUser = function(lat, lng) {
     map.setView([lat, lng], 15);
+  };
+  window.clearRoute = function() {
+    if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   };
 </script>
 </body>
@@ -130,15 +152,35 @@ export default function MapScreen() {
   const gradient = roleGradients[role] ?? roleGradients.citizen;
   const insets = useSafeAreaInsets();
 
-  const { damageReports, loading, error, fetchDamageReports } = useMap();
+  const { damageReports, activeRoute, loading, error, fetchDamageReports, calculateRoute, clearRoute } = useMap();
+  const { pendingRouteModal, clearRouteModalTrigger } = useMapStore();
   const { location } = useLocation();
 
   const [activeFilters, setActiveFilters] = useState<MapFilter[]>(['hasar']);
   const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null);
+  const [routeModalVisible, setRouteModalVisible] = useState(false);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [startLat, setStartLat] = useState('');
+  const [startLng, setStartLng] = useState('');
+  const [endLat, setEndLat] = useState('');
+  const [endLng, setEndLng] = useState('');
   const webviewRef = useRef<WebView>(null);
 
+  // ReportScreen'den gelen otomatik rota modal tetikleyici
+  useEffect(() => {
+    if (pendingRouteModal) {
+      clearRouteModalTrigger();
+      setRouteModalVisible(true);
+    }
+  }, [pendingRouteModal]);
+
   const visibleReports = activeFilters.includes('hasar') ? damageReports : [];
-  const html = buildLeafletHTML(visibleReports, location?.latitude, location?.longitude);
+  const html = buildLeafletHTML(
+    visibleReports,
+    activeFilters.includes('guzergah') ? activeRoute : null,
+    location?.latitude,
+    location?.longitude,
+  );
 
   const toggleFilter = (key: MapFilter) => {
     setActiveFilters(prev =>
@@ -153,6 +195,49 @@ export default function MapScreen() {
     );
   };
 
+  const openRouteModal = () => {
+    // Mevcut konumu başlangıç olarak doldur
+    if (location) {
+      setStartLat(String(location.latitude.toFixed(6)));
+      setStartLng(String(location.longitude.toFixed(6)));
+    }
+    setRouteModalVisible(true);
+  };
+
+  const handleCalculateRoute = async () => {
+    const sLat = parseFloat(startLat);
+    const sLng = parseFloat(startLng);
+    const eLat = parseFloat(endLat);
+    const eLng = parseFloat(endLng);
+
+    if (isNaN(sLat) || isNaN(sLng) || isNaN(eLat) || isNaN(eLng)) {
+      showToast('Lütfen geçerli koordinatlar girin.', 'error');
+      return;
+    }
+
+    setRouteLoading(true);
+    try {
+      await calculateRoute({
+        start_lat: sLat, start_lng: sLng,
+        end_lat: eLat,   end_lng: eLng,
+      });
+      setRouteModalVisible(false);
+      // Güzergah filtresini otomatik aç
+      setActiveFilters(prev => prev.includes('guzergah') ? prev : [...prev, 'guzergah']);
+      showToast('Güzergah hesaplandı.', 'success');
+    } catch (e: any) {
+      showToast(e?.response?.data?.detail ?? 'Rota hesaplanamadı.', 'error');
+    } finally {
+      setRouteLoading(false);
+    }
+  };
+
+  const handleClearRoute = () => {
+    clearRoute();
+    webviewRef.current?.injectJavaScript('clearRoute(); true;');
+    setActiveFilters(prev => prev.filter(k => k !== 'guzergah'));
+  };
+
   const onWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -160,7 +245,7 @@ export default function MapScreen() {
         const report = damageReports.find(r => r.id === data.id);
         if (report) setSelectedReport(report);
       }
-    } catch { }
+    } catch {}
   };
 
   const bottomOffset = insets.bottom + 90;
@@ -195,47 +280,28 @@ export default function MapScreen() {
           <View>
             <Text style={styles.headerTitle}>Deprem Haritası</Text>
             <Text style={styles.headerSub}>
-              {loading
-                ? 'Yükleniyor…'
-                : error
-                  ? 'Bağlantı hatası'
-                  : `${damageReports.length} hasar raporu`}
+              {loading ? 'Yükleniyor…' : error ? 'Bağlantı hatası' : `${damageReports.length} hasar raporu`}
             </Text>
           </View>
-          {loading && (
-            <ActivityIndicator color="#fff" size="small" style={{ marginLeft: 'auto' }} />
-          )}
+          {loading && <ActivityIndicator color="#fff" size="small" style={{ marginLeft: 'auto' }} />}
         </View>
       </LinearGradient>
 
       {/* Filtre çubuğu */}
-      <View
-        style={[styles.filterBar, { top: insets.top + (Platform.OS === 'ios' ? 110 : 100) }]}
-        pointerEvents="box-none"
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
-        >
+      <View style={[styles.filterBar, { top: insets.top + (Platform.OS === 'ios' ? 110 : 100) }]} pointerEvents="box-none">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
           {FILTERS.map(f => {
             const active = activeFilters.includes(f.key);
             return (
               <TouchableOpacity
-                key={f.key}
-                activeOpacity={0.8}
-                onPress={() => toggleFilter(f.key)}
-                style={[
-                  styles.filterChip,
-                  active
-                    ? { backgroundColor: f.color, borderColor: f.color }
-                    : { backgroundColor: 'rgba(255,255,255,0.92)', borderColor: '#E2E8F0' },
-                ]}
+                key={f.key} activeOpacity={0.8}
+                onPress={() => f.key === 'guzergah' ? openRouteModal() : toggleFilter(f.key)}
+                style={[styles.filterChip, active
+                  ? { backgroundColor: f.color, borderColor: f.color }
+                  : { backgroundColor: 'rgba(255,255,255,0.92)', borderColor: '#E2E8F0' }]}
               >
                 <Icon name={f.icon} size={13} color={active ? '#fff' : f.color} strokeWidth={2.5} />
-                <Text style={[styles.filterText, { color: active ? '#fff' : f.color }]}>
-                  {f.label}
-                </Text>
+                <Text style={[styles.filterText, { color: active ? '#fff' : f.color }]}>{f.label}</Text>
                 {f.key === 'hasar' && damageReports.length > 0 && (
                   <View style={[styles.filterBadge, { backgroundColor: active ? 'rgba(255,255,255,0.3)' : f.color }]}>
                     <Text style={styles.filterBadgeText}>{damageReports.length}</Text>
@@ -257,6 +323,11 @@ export default function MapScreen() {
             ? <ActivityIndicator color="#1976D2" size="small" />
             : <Icon name="alertTriangle" size={18} color="#1976D2" strokeWidth={2.5} />}
         </TouchableOpacity>
+        {activeRoute && (
+          <TouchableOpacity activeOpacity={0.8} onPress={handleClearRoute} style={[styles.toolBtn, { borderColor: '#DC2626' }]}>
+            <Icon name="shield" size={18} color="#DC2626" strokeWidth={2.5} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Alt bilgi kartı */}
@@ -267,6 +338,15 @@ export default function MapScreen() {
             <Text style={styles.summaryVal}>{damageReports.length}</Text>
             <Text style={styles.summaryLbl}>Hasar</Text>
           </View>
+          {activeRoute && (
+            <View style={styles.summaryChip}>
+              <View style={[styles.dot, { backgroundColor: '#7C3AED' }]} />
+              <Text style={[styles.summaryVal, { color: '#7C3AED' }]}>
+                {activeRoute.distance_meters ? `${(activeRoute.distance_meters / 1000).toFixed(1)} km` : 'Aktif'}
+              </Text>
+              <Text style={styles.summaryLbl}>Güzergah</Text>
+            </View>
+          )}
           <View style={styles.summaryChip}>
             <View style={[styles.dot, { backgroundColor: location ? '#059669' : '#94A3B8' }]} />
             <Text style={[styles.summaryVal, { color: location ? '#059669' : '#94A3B8' }]}>
@@ -282,7 +362,6 @@ export default function MapScreen() {
           )}
         </View>
 
-        {/* Seçili rapor detay */}
         {selectedReport && (
           <View style={styles.panelBody}>
             <View style={styles.reportDetailRow}>
@@ -308,6 +387,91 @@ export default function MapScreen() {
           </View>
         )}
       </View>
+
+      {/* Rota Hesaplama Modal */}
+      <Modal visible={routeModalVisible} transparent animationType="slide" onRequestClose={() => setRouteModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconWrap}>
+                <Icon name="mapPin" size={18} color="#7C3AED" strokeWidth={2.5} />
+              </View>
+              <Text style={styles.modalTitle}>Güzergah Hesapla</Text>
+              <TouchableOpacity onPress={() => setRouteModalVisible(false)} style={styles.modalCloseBtn}>
+                <Icon name="shield" size={16} color="#94A3B8" strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Başlangıç Koordinatı</Text>
+            <View style={styles.coordRow}>
+              <TextInput
+                style={styles.coordInput}
+                placeholder="Enlem (lat)"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                value={startLat}
+                onChangeText={setStartLat}
+              />
+              <TextInput
+                style={styles.coordInput}
+                placeholder="Boylam (lng)"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                value={startLng}
+                onChangeText={setStartLng}
+              />
+            </View>
+
+            {location && (
+              <TouchableOpacity
+                style={styles.useMyLocBtn}
+                onPress={() => {
+                  setStartLat(String(location.latitude.toFixed(6)));
+                  setStartLng(String(location.longitude.toFixed(6)));
+                }}
+              >
+                <Icon name="mapPin" size={13} color="#1976D2" strokeWidth={2.5} />
+                <Text style={styles.useMyLocText}>Mevcut konumumu kullan</Text>
+              </TouchableOpacity>
+            )}
+
+            <Text style={styles.modalLabel}>Hedef Koordinatı</Text>
+            <View style={styles.coordRow}>
+              <TextInput
+                style={styles.coordInput}
+                placeholder="Enlem (lat)"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                value={endLat}
+                onChangeText={setEndLat}
+              />
+              <TextInput
+                style={styles.coordInput}
+                placeholder="Boylam (lng)"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                value={endLng}
+                onChangeText={setEndLng}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.calcBtn, routeLoading && { opacity: 0.7 }]}
+              onPress={handleCalculateRoute}
+              disabled={routeLoading}
+              activeOpacity={0.85}
+            >
+              {routeLoading
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <>
+                    <Icon name="mapPin" size={16} color="#fff" strokeWidth={2.5} />
+                    <Text style={styles.calcBtnText}>Güzergahı Hesapla</Text>
+                  </>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -315,14 +479,8 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#E8EAF0' },
 
-  header: {
-    position: 'absolute', top: 0, left: 0, right: 0,
-    paddingBottom: 24, zIndex: 10,
-  },
-  headerContent: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 20, paddingTop: 4,
-  },
+  header: { position: 'absolute', top: 0, left: 0, right: 0, paddingBottom: 24, zIndex: 10 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 4 },
   headerIcon: {
     width: 40, height: 40, borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -330,7 +488,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
   },
   headerTitle: { fontSize: 20, fontWeight: '900', color: '#fff' },
-  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 1 },
+  headerSub:   { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 1 },
 
   filterBar: { position: 'absolute', left: 0, right: 0, zIndex: 10 },
   filterScroll: { paddingHorizontal: 16, gap: 8 },
@@ -348,8 +506,7 @@ const styles = StyleSheet.create({
   toolBar: { position: 'absolute', right: 16, gap: 10, zIndex: 10 },
   toolBtn: {
     width: 44, height: 44, borderRadius: 14,
-    backgroundColor: '#fff',
-    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12, shadowRadius: 6, elevation: 6,
     borderWidth: 1, borderColor: '#E2E8F0',
@@ -362,17 +519,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12, shadowRadius: 16, elevation: 12,
     borderWidth: 1, borderColor: '#F1F5F9', zIndex: 10,
   },
-  summaryRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14, gap: 8,
-  },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 8 },
   summaryChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#F8FAFC', borderRadius: 10,
     paddingHorizontal: 10, paddingVertical: 6,
     borderWidth: 1, borderColor: '#E2E8F0',
   },
-  dot: { width: 7, height: 7, borderRadius: 4 },
+  dot:        { width: 7, height: 7, borderRadius: 4 },
   summaryVal: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
   summaryLbl: { fontSize: 10, color: '#64748B', fontWeight: '600' },
 
@@ -383,22 +537,47 @@ const styles = StyleSheet.create({
   },
   retryText: { fontSize: 11, fontWeight: '700', color: '#DC2626' },
 
-  panelBody: {
-    borderTopWidth: 1, borderTopColor: '#F1F5F9',
-    paddingHorizontal: 16, paddingVertical: 14, gap: 6,
-  },
+  panelBody: { borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 14, gap: 6 },
   reportDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   reportDetailLabel: { fontSize: 12, color: '#64748B', fontWeight: '600', width: 60 },
-  reportDetailVal: { fontSize: 12, color: '#1E293B', fontWeight: '700' },
-  reportDesc: {
-    fontSize: 12, color: '#475569', lineHeight: 17,
-    backgroundColor: '#F8FAFC', borderRadius: 8,
-    padding: 8, marginTop: 4,
-  },
-  closeDetailBtn: {
-    alignSelf: 'flex-end', marginTop: 6,
-    backgroundColor: '#F1F5F9', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 5,
-  },
+  reportDetailVal:   { fontSize: 12, color: '#1E293B', fontWeight: '700' },
+  reportDesc: { fontSize: 12, color: '#475569', lineHeight: 17, backgroundColor: '#F8FAFC', borderRadius: 8, padding: 8, marginTop: 4 },
+  closeDetailBtn: { alignSelf: 'flex-end', marginTop: 6, backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
   closeDetailText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalCard: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 36,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 20,
+  },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
+  modalIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: '#F5F3FF', alignItems: 'center', justifyContent: 'center',
+  },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: '#1E293B', flex: 1 },
+  modalCloseBtn: { padding: 4 },
+  modalLabel: { fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 8, marginTop: 4 },
+  coordRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  coordInput: {
+    flex: 1, height: 44, borderRadius: 12,
+    backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0',
+    paddingHorizontal: 12, fontSize: 14, color: '#1E293B',
+  },
+  useMyLocBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginBottom: 16, alignSelf: 'flex-start',
+    backgroundColor: '#EFF6FF', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  useMyLocText: { fontSize: 12, fontWeight: '600', color: '#1976D2' },
+  calcBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginTop: 20, height: 50, borderRadius: 14,
+    backgroundColor: '#7C3AED',
+    shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 6,
+  },
+  calcBtnText: { fontSize: 15, fontWeight: '800', color: '#fff' },
 });
