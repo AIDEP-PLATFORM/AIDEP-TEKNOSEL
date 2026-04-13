@@ -17,7 +17,7 @@ async def get_routes_from_osrm(
     url = (
         f"{settings.osrm_url}/route/v1/driving/"
         f"{start_lon},{start_lat};{end_lon},{end_lat}"
-        f"?alternatives=true&geometries=geojson&overview=full&steps=false"
+        f"?alternatives=true&geometries=geojson&overview=full&steps=true"
     )
 
     async with httpx.AsyncClient(timeout=10.0) as client:

@@ -26,7 +26,7 @@ async def calculate_route(
     Rotadaki hasarlı yolları dikkate alarak en güvenli güzergahı seçer ve kaydeder.
     """
     try:
-        saved_route, coords = await calculate_and_save_route(
+        saved_route, coords, steps = await calculate_and_save_route(
             db=db,
             start_lat=payload.start_lat,
             start_lng=payload.start_lng,
@@ -45,6 +45,7 @@ async def calculate_route(
         volunteer_id=saved_route.volunteer_id,
         request_id=saved_route.request_id,
         coordinates=coords,
+        steps=steps,
         duration_seconds=saved_route.duration_seconds,
         distance_meters=saved_route.distance_meters,
         risk_score=saved_route.risk_score,
