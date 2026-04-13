@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView,
-  Animated, Modal, Platform, StatusBar,
+  Animated, Modal, Platform, StatusBar, TextInput, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { showToast } from '../../../shared/components/Toast';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../../core/stores/auth.store';
+import { authService } from '../../auth/services/auth.service';
 import colors from '../../../shared/theme/colors';
 import Icon from '../../../shared/components/Icon';
 import AnimatedPress from '../../../shared/components/AnimatedPress';
@@ -41,8 +42,15 @@ const stats = [
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
-  const { user, logout } = useAuthStore();
-  const [infoModal, setInfoModal] = useState(false);
+  const { user, setUser, logout } = useAuthStore();
+  const [infoModal, setInfoModal]   = useState(false);
+  const [editMode, setEditMode]     = useState(false);
+  const [saving, setSaving]         = useState(false);
+  const [editName, setEditName]     = useState('');
+  const [editPhone, setEditPhone]   = useState('');
+  const [editCity, setEditCity]     = useState('');
+  const [editOrg, setEditOrg]       = useState('');
+
   const gradient = roleGradients[user?.role ?? 'citizen'] ?? roleGradients.citizen;
   const bgEnd = roleBgEnd[user?.role ?? 'citizen'] ?? roleBgEnd.citizen;
 
@@ -52,6 +60,32 @@ export default function ProfileScreen() {
   const city     = user?.city     ?? '';
   const tcNo     = user?.tc_no    ?? '';
   const roleLabel = user?.role === 'citizen' ? 'Vatandaş' : user?.role === 'volunteer' ? 'Gönüllü' : user?.role === 'admin' ? 'Yetkili' : 'Kullanıcı';
+
+  const openEdit = () => {
+    setEditName(fullName);
+    setEditPhone(phone);
+    setEditCity(city);
+    setEditOrg(user?.organization ?? '');
+    setEditMode(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { user: updated, error } = await authService.updateProfile({
+      full_name:    editName.trim()  || undefined,
+      phone:        editPhone.trim() || undefined,
+      city:         editCity.trim()  || undefined,
+      organization: editOrg.trim()   || undefined,
+    });
+    setSaving(false);
+    if (updated) {
+      setUser(updated);
+      setEditMode(false);
+      showToast('Profil bilgileriniz güncellendi.', 'success');
+    } else {
+      showToast(error ?? 'Güncelleme başarısız.', 'error');
+    }
+  };
 
   const initials = fullName
     ? fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
@@ -76,6 +110,11 @@ export default function ProfileScreen() {
     if (key === 'password') { showToast('Şifre değiştirme özelliği yakında aktif olacak.', 'info'); return; }
     if (key === 'notif')    { showToast('Bildirim ayarları yakında aktif olacak.', 'info'); return; }
     if (key === 'about')    { showToast('AIDEP v1.0.0 — Acil Durum İşbirliği Platformu', 'info'); return; }
+  };
+
+  const handleRefreshProfile = async () => {
+    const updated = await authService.getProfile();
+    if (updated) { setUser(updated); showToast('Profil yenilendi.', 'success'); }
   };
 
   const handleLogout = () => {
@@ -195,45 +234,98 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {/* Profil Bilgileri Modal */}
-      <Modal visible={infoModal} animationType="slide" transparent onRequestClose={() => setInfoModal(false)}>
+      <Modal visible={infoModal} animationType="slide" transparent onRequestClose={() => { setInfoModal(false); setEditMode(false); }}>
         <View style={modal.overlay}>
           <View style={modal.sheet}>
-            {/* Handle */}
             <View style={modal.handle} />
 
-            {/* Başlık */}
             <View style={modal.header}>
-              <Text style={modal.title}>Profil Bilgilerim</Text>
-              <TouchableOpacity onPress={() => setInfoModal(false)} style={modal.closeBtn} activeOpacity={0.7}>
-                <Icon name="close" size={18} color={colors.textSecondary} strokeWidth={2.5} />
-              </TouchableOpacity>
+              <Text style={modal.title}>{editMode ? 'Profili Düzenle' : 'Profil Bilgilerim'}</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {!editMode && (
+                  <TouchableOpacity onPress={openEdit} style={[modal.closeBtn, { backgroundColor: '#EBF8FF' }]} activeOpacity={0.7}>
+                    <Icon name="user" size={16} color="#1976D2" strokeWidth={2.5} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => { setInfoModal(false); setEditMode(false); }} style={modal.closeBtn} activeOpacity={0.7}>
+                  <Icon name="close" size={18} color={colors.textSecondary} strokeWidth={2.5} />
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* Bilgiler */}
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={modal.content}>
-              {[
-                { label: 'Ad Soyad',       value: fullName || '—', icon: 'user'   as const, color: '#1976D2', bg: '#EBF8FF' },
-                { label: 'E-posta',        value: email    || '—', icon: 'mail'   as const, color: '#6B46C1', bg: '#FAF5FF' },
-                { label: 'Telefon',        value: phone    || '—', icon: 'phone'  as const, color: '#2F855A', bg: '#F0FFF4' },
-                { label: 'TC Kimlik No',   value: tcNo ? tcNo.replace(/(\d{3})(\d{4})(\d{4})/, '$1 $2 $3') : '—', icon: 'lock' as const, color: '#DD6B20', bg: '#FFFAF0' },
-                { label: 'Şehir / Adres', value: city    || '—', icon: 'mapPin' as const, color: '#E53E3E', bg: '#FFF5F5' },
-                { label: 'Rol',            value: roleLabel,       icon: 'shield' as const, color: '#1565C0', bg: '#EBF8FF' },
-              ].map((row, i) => (
-                <View key={i} style={modal.row}>
-                  <View style={[modal.rowIcon, { backgroundColor: row.bg }]}>
-                    <Icon name={row.icon} size={16} color={row.color} strokeWidth={2} />
-                  </View>
-                  <View style={modal.rowText}>
-                    <Text style={modal.rowLabel}>{row.label}</Text>
-                    <Text style={modal.rowValue}>{row.value}</Text>
-                  </View>
-                </View>
-              ))}
+              {editMode ? (
+                <>
+                  {[
+                    { label: 'Ad Soyad',      value: editName,  setter: setEditName,  placeholder: 'Adınız Soyadınız', icon: 'user'    as const, color: '#1976D2', bg: '#EBF8FF' },
+                    { label: 'Telefon',       value: editPhone, setter: setEditPhone, placeholder: '+90 5xx xxx xx xx', icon: 'phone'   as const, color: '#2F855A', bg: '#F0FFF4', keyboardType: 'phone-pad' as const },
+                    { label: 'Şehir',         value: editCity,  setter: setEditCity,  placeholder: 'Şehriniz',          icon: 'mapPin'  as const, color: '#E53E3E', bg: '#FFF5F5' },
+                    { label: 'Kuruluş / STK', value: editOrg,   setter: setEditOrg,   placeholder: 'Kuruluş adı',       icon: 'shield'  as const, color: '#6B46C1', bg: '#FAF5FF' },
+                  ].map((f, i) => (
+                    <View key={i} style={modal.editRow}>
+                      <View style={[modal.rowIcon, { backgroundColor: f.bg }]}>
+                        <Icon name={f.icon} size={16} color={f.color} strokeWidth={2} />
+                      </View>
+                      <View style={modal.editField}>
+                        <Text style={modal.rowLabel}>{f.label}</Text>
+                        <TextInput
+                          style={modal.input}
+                          value={f.value}
+                          onChangeText={f.setter}
+                          placeholder={f.placeholder}
+                          placeholderTextColor={colors.textMuted}
+                          keyboardType={(f as any).keyboardType}
+                        />
+                      </View>
+                    </View>
+                  ))}
 
-              <View style={modal.noteBadge}>
-                <Icon name="info" size={14} color="#1976D2" strokeWidth={2} />
-                <Text style={modal.noteText}>Bilgilerinizi güncellemek için destek ekibiyle iletişime geçin.</Text>
-              </View>
+                  <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.85} style={modal.saveBtn}>
+                    <LinearGradient colors={['#1565C0', '#2196F3']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={modal.saveBtnGrad}>
+                      {saving
+                        ? <ActivityIndicator color="#fff" size="small" />
+                        : <Icon name="checkCircle" size={18} color="#fff" strokeWidth={2.5} />}
+                      <Text style={modal.saveBtnText}>{saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={() => setEditMode(false)} style={modal.cancelBtn}>
+                    <Text style={modal.cancelBtnText}>İptal</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  {[
+                    { label: 'Ad Soyad',       value: fullName || '—', icon: 'user'   as const, color: '#1976D2', bg: '#EBF8FF' },
+                    { label: 'E-posta',        value: email    || '—', icon: 'mail'   as const, color: '#6B46C1', bg: '#FAF5FF' },
+                    { label: 'Telefon',        value: phone    || '—', icon: 'phone'  as const, color: '#2F855A', bg: '#F0FFF4' },
+                    { label: 'TC Kimlik No',   value: tcNo ? tcNo.replace(/(\d{3})(\d{4})(\d{4})/, '$1 $2 $3') : '—', icon: 'lock' as const, color: '#DD6B20', bg: '#FFFAF0' },
+                    { label: 'Şehir / Adres', value: city    || '—', icon: 'mapPin' as const, color: '#E53E3E', bg: '#FFF5F5' },
+                    { label: 'Rol',            value: roleLabel,       icon: 'shield' as const, color: '#1565C0', bg: '#EBF8FF' },
+                  ].map((row, i) => (
+                    <View key={i} style={modal.row}>
+                      <View style={[modal.rowIcon, { backgroundColor: row.bg }]}>
+                        <Icon name={row.icon} size={16} color={row.color} strokeWidth={2} />
+                      </View>
+                      <View style={modal.rowText}>
+                        <Text style={modal.rowLabel}>{row.label}</Text>
+                        <Text style={modal.rowValue}>{row.value}</Text>
+                      </View>
+                    </View>
+                  ))}
+
+                  <TouchableOpacity onPress={openEdit} activeOpacity={0.85} style={modal.saveBtn}>
+                    <LinearGradient colors={['#1565C0', '#2196F3']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={modal.saveBtnGrad}>
+                      <Icon name="user" size={18} color="#fff" strokeWidth={2.5} />
+                      <Text style={modal.saveBtnText}>Profili Düzenle</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={handleRefreshProfile} style={modal.cancelBtn}>
+                    <Text style={modal.cancelBtnText}>Profili Yenile</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -357,4 +449,27 @@ const modal = StyleSheet.create({
     backgroundColor: '#EBF8FF', borderRadius: 14, padding: 14, marginTop: 16,
   },
   noteText: { flex: 1, fontSize: 13, color: '#1976D2', lineHeight: 19 },
+
+  editRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#F8FAFC',
+  },
+  editField: { flex: 1 },
+  input: {
+    fontSize: 16, fontWeight: '600', color: colors.textPrimary,
+    marginTop: 4, paddingVertical: 6, paddingHorizontal: 2,
+    borderBottomWidth: 1.5, borderBottomColor: '#C7D2FE',
+  },
+
+  saveBtn: { marginTop: 22 },
+  saveBtnGrad: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    paddingVertical: 15, borderRadius: 16,
+    shadowColor: '#1565C0', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+  },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+
+  cancelBtn: { alignItems: 'center', paddingVertical: 12, marginTop: 6 },
+  cancelBtnText: { fontSize: 14, color: '#94A3B8', fontWeight: '600' },
 });

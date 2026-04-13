@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import Icon from '../../../shared/components/Icon';
@@ -9,6 +9,7 @@ import TopBar from '../../../shared/components/TopBar';
 import FloatingBubbles from '../../../shared/components/FloatingBubbles';
 import { showToast } from '../../../shared/components/Toast';
 import { volunteerService, DamageReport } from '../services/volunteer.service';
+import { tasksService, Team } from '../services/tasks.service';
 
 // ─── Citizen ──────────────────────────────────────────────────────────────────
 const infoCards = [
@@ -380,87 +381,196 @@ function VolunteerView() {
 }
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
-const adminTeams = [
-  { id: '1', name: 'AKUT Kahramanmaraş', type: 'Arama Kurtarma', members: 18, active: true,  tasks: 5 },
-  { id: '2', name: 'Kızılay Gönüllüleri', type: 'Sağlık & İaşe', members: 34, active: true,  tasks: 8 },
-  { id: '3', name: 'AFAD Koordinasyon',   type: 'Koordinasyon',   members: 12, active: false, tasks: 2 },
-  { id: '4', name: 'Lojistik Destek',     type: 'Malzeme',        members: 9,  active: true,  tasks: 3 },
-];
-
-const adminStats = [
-  { label: 'Toplam Ekip', value: '4',  color: '#60A5FA', iconBg: 'rgba(25,118,210,0.35)',  icon: 'users'       as const },
-  { label: 'Aktif Görev', value: '18', color: '#6EE7B7', iconBg: 'rgba(5,150,105,0.35)',   icon: 'checkCircle' as const },
-  { label: 'Toplam Üye',  value: '73', color: '#FCD34D', iconBg: 'rgba(217,119,6,0.35)',   icon: 'user'        as const },
-  { label: 'Bölge',       value: '6',  color: '#C4B5FD', iconBg: 'rgba(124,58,237,0.35)',  icon: 'mapPin'      as const },
-];
 
 function AdminView() {
+  const [teams, setTeams]               = useState<Team[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(true);
+  const [refreshing, setRefreshing]     = useState(false);
+  const [createModal, setCreateModal]   = useState(false);
+  const [creating, setCreating]         = useState(false);
+  const [newName, setNewName]           = useState('');
+  const [newOrg, setNewOrg]             = useState('');
+  const [newMax, setNewMax]             = useState('10');
+
+  const activeCount   = teams.filter(t => t.status !== 'inactive').length;
+  const totalMembers  = teams.reduce((s, t) => s + t.member_count, 0);
+  const onMission     = teams.filter(t => t.status === 'on_mission').length;
+
+  const adminStats = [
+    { label: 'Toplam Ekip', value: String(teams.length), color: '#60A5FA', iconBg: 'rgba(25,118,210,0.35)', icon: 'users'       as const },
+    { label: 'Aktif Ekip',  value: String(activeCount),  color: '#6EE7B7', iconBg: 'rgba(5,150,105,0.35)',  icon: 'checkCircle' as const },
+    { label: 'Toplam Üye',  value: String(totalMembers), color: '#FCD34D', iconBg: 'rgba(217,119,6,0.35)',  icon: 'user'        as const },
+    { label: 'Görevde',     value: String(onMission),    color: '#C4B5FD', iconBg: 'rgba(124,58,237,0.35)', icon: 'mapPin'      as const },
+  ];
+
+  const loadTeams = useCallback(async () => {
+    const data = await tasksService.getTeams();
+    setTeams(data);
+    setTeamsLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => { loadTeams(); }, []);
+
+  const handleCreateTeam = async () => {
+    if (!newName.trim() || !newOrg.trim()) {
+      showToast('Ekip adı ve kuruluş zorunludur.', 'warning');
+      return;
+    }
+    setCreating(true);
+    const team = await tasksService.createTeam({
+      name: newName.trim(),
+      organization: newOrg.trim(),
+      max_size: parseInt(newMax, 10) || 10,
+    });
+    setCreating(false);
+    if (team) {
+      setTeams(prev => [team, ...prev]);
+      setCreateModal(false);
+      setNewName(''); setNewOrg(''); setNewMax('10');
+      showToast(`"${team.name}" ekibi oluşturuldu.`, 'success');
+    } else {
+      showToast('Ekip oluşturulamadı. Lütfen tekrar deneyin.', 'error');
+    }
+  };
+
+  const statusColor: Record<string, string> = {
+    available: '#059669',
+    on_mission: '#1976D2',
+    inactive: '#94A3B8',
+  };
+  const statusLabel: Record<string, string> = {
+    available: 'Müsait',
+    on_mission: 'Görevde',
+    inactive: 'Pasif',
+  };
+
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.adminStatsGrid}>
-        {adminStats.map((s, i) => (
-          <View key={i} style={[styles.adminStatCard, { borderLeftColor: s.color }]}>
-            <View style={[styles.adminStatIconWrap, { backgroundColor: s.iconBg }]}>
-              <Icon name={s.icon} size={20} color={s.color} strokeWidth={2} />
+    <>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadTeams(); }} tintColor="rgba(255,255,255,0.6)" />}
+      >
+        <View style={styles.adminStatsGrid}>
+          {adminStats.map((s, i) => (
+            <View key={i} style={[styles.adminStatCard, { borderLeftColor: s.color }]}>
+              <View style={[styles.adminStatIconWrap, { backgroundColor: s.iconBg }]}>
+                <Icon name={s.icon} size={20} color={s.color} strokeWidth={2} />
+              </View>
+              <Text style={[styles.adminStatNum, { color: s.color }]}>{s.value}</Text>
+              <Text style={styles.adminStatLabel}>{s.label}</Text>
             </View>
-            <Text style={[styles.adminStatNum, { color: s.color }]}>{s.value}</Text>
-            <Text style={styles.adminStatLabel}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
 
-      <View style={styles.adminActionRow}>
-        <TouchableOpacity activeOpacity={0.85} style={styles.adminActionBtn}
-          onPress={() => showToast('Tüm ekiplere acil alarm gönderildi!', 'error')}>
-          <LinearGradient colors={['#DC2626', '#EF4444']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.adminActionGrad}>
-            <Icon name="alertTriangle" size={18} color="#fff" strokeWidth={2.5} />
-            <Text style={styles.adminActionText}>Acil Alarm</Text>
+        <View style={styles.adminActionRow}>
+          <TouchableOpacity activeOpacity={0.85} style={styles.adminActionBtn}
+            onPress={() => showToast('Tüm ekiplere acil alarm gönderildi!', 'error')}>
+            <LinearGradient colors={['#DC2626', '#EF4444']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.adminActionGrad}>
+              <Icon name="alertTriangle" size={18} color="#fff" strokeWidth={2.5} />
+              <Text style={styles.adminActionText}>Acil Alarm</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.85} style={styles.adminActionBtn} onPress={() => setCreateModal(true)}>
+            <LinearGradient colors={['#1565C0', '#1976D2']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.adminActionGrad}>
+              <Icon name="users" size={18} color="#fff" strokeWidth={2.5} />
+              <Text style={styles.adminActionText}>Ekip Oluştur</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <LinearGradient colors={['#1976D2', '#60A5FA']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.sectionDot} />
+          <Text style={styles.sectionLabel}>YÖNETİLEN EKİPLER</Text>
+          {!teamsLoading && <View style={styles.taskCountBadge}><Text style={styles.taskCountText}>{teams.length}</Text></View>}
+        </View>
+
+        {teamsLoading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color="rgba(255,255,255,0.7)" />
+            <Text style={styles.loadingText}>Ekipler yükleniyor...</Text>
+          </View>
+        ) : teams.length === 0 ? (
+          <LinearGradient colors={['rgba(25,118,210,0.3)','rgba(25,118,210,0.1)']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.emptyTaskBox}>
+            <Icon name="users" size={28} color="rgba(255,255,255,0.4)" strokeWidth={1.5} />
+            <Text style={styles.emptyTaskText}>Henüz ekip bulunmuyor</Text>
           </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.85} style={styles.adminActionBtn}
-          onPress={() => showToast('Ekip atama ekranı yakında aktif olacak.', 'info')}>
-          <LinearGradient colors={['#1565C0', '#1976D2']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.adminActionGrad}>
-            <Icon name="users" size={18} color="#fff" strokeWidth={2.5} />
-            <Text style={styles.adminActionText}>Ekip Ata</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+        ) : (
+          teams.map((team) => {
+            const sc = statusColor[team.status] ?? '#94A3B8';
+            const sl = statusLabel[team.status] ?? team.status;
+            return (
+              <TouchableOpacity key={team.id} activeOpacity={0.85} style={styles.adminTeamCard}>
+                <View style={styles.adminTeamLeft}>
+                  <View style={[styles.adminTeamDot, { backgroundColor: sc }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.adminTeamName} numberOfLines={1}>{team.name}</Text>
+                    <Text style={styles.adminTeamType}>{team.organization} • {sl}</Text>
+                  </View>
+                </View>
+                <View style={styles.adminTeamRight}>
+                  <View style={styles.adminTeamBadge}>
+                    <Icon name="users" size={12} color="rgba(255,255,255,0.7)" />
+                    <Text style={styles.adminTeamBadgeText}>{team.member_count}/{team.max_size}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
 
-      <View style={styles.sectionHeader}>
-        <LinearGradient colors={['#1976D2', '#60A5FA']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.sectionDot} />
-        <Text style={styles.sectionLabel}>YÖNETİLEN EKİPLER</Text>
-      </View>
-      {adminTeams.map((team) => (
-        <TouchableOpacity key={team.id} activeOpacity={0.85} style={styles.adminTeamCard}>
-          <View style={styles.adminTeamLeft}>
-            <View style={[styles.adminTeamDot, { backgroundColor: team.active ? '#059669' : '#94A3B8' }]} />
-            <View>
-              <Text style={styles.adminTeamName}>{team.name}</Text>
-              <Text style={styles.adminTeamType}>{team.type}</Text>
+        <TouchableOpacity activeOpacity={0.85} style={styles.addTeamBtn} onPress={() => setCreateModal(true)}>
+          <Icon name="users" size={20} color="#60A5FA" strokeWidth={2} />
+          <Text style={[styles.addTeamBtnText, { color: 'rgba(255,255,255,0.85)' }]}>Yeni Ekip Oluştur</Text>
+          <Icon name="chevronRight" size={18} color="rgba(255,255,255,0.5)" />
+        </TouchableOpacity>
+
+        <View style={{ height: 110 }} />
+      </ScrollView>
+
+      {/* Ekip Oluştur Modal */}
+      <Modal visible={createModal} transparent animationType="slide" onRequestClose={() => setCreateModal(false)}>
+        <View style={styles.createModalOverlay}>
+          <View style={styles.createModalSheet}>
+            <View style={styles.createModalHandle} />
+            <View style={styles.createModalHeader}>
+              <Text style={styles.createModalTitle}>Yeni Ekip Oluştur</Text>
+              <TouchableOpacity onPress={() => setCreateModal(false)} style={styles.createModalClose} activeOpacity={0.7}>
+                <Icon name="close" size={18} color={colors.textSecondary} strokeWidth={2.5} />
+              </TouchableOpacity>
             </View>
+
+            {[
+              { label: 'Ekip Adı *', value: newName, setter: setNewName, placeholder: 'AKUT İstanbul' },
+              { label: 'Kuruluş / STK *', value: newOrg, setter: setNewOrg, placeholder: 'Akut Derneği' },
+              { label: 'Maksimum Üye', value: newMax, setter: setNewMax, placeholder: '10', keyboardType: 'numeric' as const },
+            ].map((f, i) => (
+              <View key={i} style={styles.createModalField}>
+                <Text style={styles.createModalLabel}>{f.label}</Text>
+                <TextInput
+                  style={styles.createModalInput}
+                  value={f.value}
+                  onChangeText={f.setter}
+                  placeholder={f.placeholder}
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType={f.keyboardType}
+                />
+              </View>
+            ))}
+
+            <TouchableOpacity onPress={handleCreateTeam} disabled={creating} activeOpacity={0.85} style={{ marginTop: 20 }}>
+              <LinearGradient colors={['#1565C0', '#2196F3']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.createModalBtn}>
+                {creating
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Icon name="users" size={18} color="#fff" strokeWidth={2.5} />}
+                <Text style={styles.createModalBtnText}>{creating ? 'Oluşturuluyor...' : 'Ekibi Oluştur'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-          <View style={styles.adminTeamRight}>
-            <View style={styles.adminTeamBadge}>
-              <Icon name="users" size={12} color="#64748B} " />
-              <Text style={styles.adminTeamBadgeText}>{team.members}</Text>
-            </View>
-            <View style={styles.adminTeamBadge}>
-              <Icon name="checkCircle" size={12} color="#1976D2" />
-              <Text style={[styles.adminTeamBadgeText, { color: '#1976D2' }]}>{team.tasks} görev</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-      ))}
-
-      <TouchableOpacity activeOpacity={0.85} style={styles.addTeamBtn}
-        onPress={() => showToast('Ekip oluşturma özelliği yakında aktif olacak.', 'info')}>
-        <Icon name="users" size={20} color="#1976D2" strokeWidth={2} />
-        <Text style={styles.addTeamBtnText}>Yeni Ekip Oluştur</Text>
-        <Icon name="chevronRight" size={18} color="#1976D2" />
-      </TouchableOpacity>
-
-      <View style={{ height: 110 }} />
-    </ScrollView>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -756,4 +866,21 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)', borderStyle: 'dashed',
   },
   addTeamBtnText: { flex: 1, fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.85)' },
+
+  // Ekip oluştur modal
+  createModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  createModalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingBottom: 40,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 20,
+  },
+  createModalHandle: { width: 40, height: 5, borderRadius: 3, backgroundColor: '#E2E8F0', alignSelf: 'center', marginTop: 12, marginBottom: 4 },
+  createModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  createModalTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+  createModalClose: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  createModalField: { marginTop: 18 },
+  createModalLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  createModalInput: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, borderBottomWidth: 1.5, borderBottomColor: '#C7D2FE', paddingVertical: 8 },
+  createModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, borderRadius: 16 },
+  createModalBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });

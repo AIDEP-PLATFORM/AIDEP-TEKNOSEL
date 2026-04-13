@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../../core/api/axiosInstance';
+import { ENDPOINTS } from '../../../core/api/endpoints';
 
 export interface User {
   id: string;
@@ -9,6 +10,13 @@ export interface User {
   tc_no: string;
   city?: string;
   role: string;
+  organization?: string;
+}
+
+export interface UserUpdatePayload {
+  full_name?: string;
+  phone?: string;
+  city?: string;
   organization?: string;
 }
 
@@ -109,5 +117,29 @@ export const authService = {
   // Token var mı kontrol et
   async getAccessToken(): Promise<string | null> {
     return AsyncStorage.getItem('access_token');
+  },
+
+  // Sunucudan güncel profil çek ve storage'ı güncelle
+  async getProfile(): Promise<User | null> {
+    try {
+      const res = await api.get<User>(ENDPOINTS.USERS.ME);
+      await AsyncStorage.setItem('user', JSON.stringify(res.data));
+      return res.data;
+    } catch {
+      return null;
+    }
+  },
+
+  // Profil güncelle
+  async updateProfile(payload: UserUpdatePayload): Promise<{ user: User | null; error: string | null }> {
+    try {
+      const res = await api.patch<User>(ENDPOINTS.USERS.ME, payload);
+      await AsyncStorage.setItem('user', JSON.stringify(res.data));
+      return { user: res.data, error: null };
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      if (typeof detail === 'string') return { user: null, error: detail };
+      return { user: null, error: 'Profil güncellenemedi. Lütfen tekrar deneyin.' };
+    }
   },
 };
