@@ -27,6 +27,7 @@ import routingService from "../services/routing.service";
 import volunteerService from "../services/volunteer.service";
 import type {
   DamageReport,
+  RouteAlternative,
   Team,
   TeamLocationSnapshot,
   Volunteer,
@@ -350,6 +351,8 @@ const MapPage: React.FC = () => {
   const [pickMode, setPickMode] = useState<"start" | "end" | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
+  const [routeAlts, setRouteAlts] = useState<RouteAlternative[]>([]);
+  const [routeAltIdx, setRouteAltIdx] = useState(0);
   const [routeInfo, setRouteInfo] = useState<string | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
 
@@ -472,6 +475,8 @@ const MapPage: React.FC = () => {
     setRouteError(null);
     setRouteInfo(null);
     setRouteResult(null);
+    setRouteAlts([]);
+    setRouteAltIdx(0);
     setTeamRouteResult(null);
     setRouteLoading(true);
     try {
@@ -485,6 +490,9 @@ const MapPage: React.FC = () => {
         setRouteError("Rota koordinatları döndürülmedi.");
         return;
       }
+      const alts = r.alternatives ?? [];
+      setRouteAlts(alts);
+      setRouteAltIdx(0);
       setRouteResult({
         coordinates: r.coordinates,
         distanceMeters: r.distance_meters,
@@ -492,26 +500,44 @@ const MapPage: React.FC = () => {
         riskScore: r.risk_score,
         startLabel: startPoint.label,
         endLabel: endPoint.label,
+        alternatives: alts,
+        selectedAltIndex: 0,
       });
-      const km =
-        r.distance_meters != null ? (r.distance_meters / 1000).toFixed(1) : "—";
-      const min =
-        r.duration_seconds != null ? Math.round(r.duration_seconds / 60) : "—";
+      const cur = alts[0];
+      const km = cur
+        ? (cur.distance_meters / 1000).toFixed(1)
+        : r.distance_meters != null
+          ? (r.distance_meters / 1000).toFixed(1)
+          : "—";
+      const min = cur
+        ? Math.round(cur.duration_seconds / 60)
+        : r.duration_seconds != null
+          ? Math.round(r.duration_seconds / 60)
+          : "—";
       const risk =
-        r.risk_score != null
-          ? r.risk_score >= 7
+        (cur?.risk_score ?? r.risk_score) != null
+          ? (cur?.risk_score ?? r.risk_score ?? 0) >= 7
             ? " · ⚠️ Yüksek Risk"
-            : r.risk_score >= 4
+            : (cur?.risk_score ?? r.risk_score ?? 0) >= 4
               ? " · Orta Risk"
               : " · Güvenli"
           : "";
-      setRouteInfo(`~${km} km · ~${min} dk${risk}`);
+      const altNote = alts.length > 1 ? ` (${alts.length} alternatif)` : "";
+      setRouteInfo(`~${km} km · ~${min} dk${risk}${altNote}`);
     } catch (e: unknown) {
       const d = (e as { response?: { data?: { detail?: string } } })?.response
         ?.data?.detail;
       setRouteError(typeof d === "string" ? d : "Rota hesaplanamadı.");
     } finally {
       setRouteLoading(false);
+    }
+  };
+
+  /* Alternatif rota seçimi */
+  const handleSelectRouteAlt = (idx: number) => {
+    setRouteAltIdx(idx);
+    if (routeResult) {
+      setRouteResult({ ...routeResult, selectedAltIndex: idx });
     }
   };
 
@@ -1037,6 +1063,8 @@ const MapPage: React.FC = () => {
                           className="auth-btn auth-btn--ghost"
                           onClick={() => {
                             setRouteResult(null);
+                            setRouteAlts([]);
+                            setRouteAltIdx(0);
                             setRouteInfo(null);
                           }}
                           style={{
@@ -1048,6 +1076,53 @@ const MapPage: React.FC = () => {
                         >
                           Rotayı Temizle
                         </button>
+                      )}
+
+                      {/* Alternatif rota seçici */}
+                      {routeAlts.length > 1 && (
+                        <Box mt={3}>
+                          <Text
+                            fontSize="10px"
+                            color="whiteAlpha.500"
+                            mb={1.5}
+                            fontWeight="700"
+                            letterSpacing="wider"
+                          >
+                            ALTERNATİF ROTALAR
+                          </Text>
+                          <Flex gap={2} flexWrap="wrap">
+                            {routeAlts.map((alt, i) => {
+                              const active = i === routeAltIdx;
+                              const rc = alt.risk_score >= 7 ? "#ef4444" : alt.risk_score >= 4 ? "#f59e0b" : "#22c55e";
+                              return (
+                                <button
+                                  key={alt.index}
+                                  type="button"
+                                  onClick={() => handleSelectRouteAlt(i)}
+                                  style={{
+                                    flex: "1 1 auto",
+                                    padding: "7px 10px",
+                                    borderRadius: 8,
+                                    border: `1.5px solid ${active ? "#3b82f6" : "rgba(255,255,255,0.12)"}`,
+                                    background: active ? "rgba(59,130,246,0.18)" : "rgba(255,255,255,0.04)",
+                                    color: active ? "#93c5fd" : "rgba(255,255,255,0.6)",
+                                    fontSize: "0.72rem",
+                                    cursor: "pointer",
+                                    textAlign: "left",
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 700 }}>
+                                    Rota {i + 1}{alt.is_best ? " ★" : ""}
+                                  </div>
+                                  <div style={{ marginTop: 2, color: active ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.35)", fontSize: "0.68rem" }}>
+                                    {(alt.distance_meters / 1000).toFixed(1)} km · {Math.round(alt.duration_seconds / 60)} dk
+                                    {" · "}<span style={{ color: rc }}>{alt.risk_score > 0.5 ? "⚠ Riskli" : "✓ Güvenli"}</span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </Flex>
+                        </Box>
                       )}
 
                       {routeInfo && (

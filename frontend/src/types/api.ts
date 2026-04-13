@@ -81,6 +81,15 @@ export interface RouteCalculateBody {
   request_id?: string | null;
 }
 
+export interface RouteAlternative {
+  index: number;
+  coordinates: number[][];   // [[lng, lat], ...]
+  duration_seconds: number;
+  distance_meters: number;
+  risk_score: number;
+  is_best: boolean;
+}
+
 export interface RouteCalculated {
   id: string;
   volunteer_id: string | null;
@@ -91,6 +100,7 @@ export interface RouteCalculated {
   risk_score: number | null;
   status: string;
   created_at: string | null;
+  alternatives?: RouteAlternative[];
 }
 
 export interface UserProfilePatch {

@@ -142,38 +142,37 @@ async def calculate_and_save_route(
     1. OSRM'den alternatif rotaları al
     2. Kritik yol hasarlarını çek
     3. Her rota için risk_score hesapla
-    4. En güvenli rotayı seç ve kaydet
+    4. Risk skoruna göre sırala; en güvenliyi DB'ye kaydet
+    5. Tüm alternatifleri döndür
     """
-    # OSRM'den rotaları al
-    osrm_data = await get_routes_from_osrm(start_lon=start_lng, start_lat=start_lat, end_lon=end_lng, end_lat=end_lat)
+    osrm_data = await get_routes_from_osrm(
+        start_lon=start_lng, start_lat=start_lat, end_lon=end_lng, end_lat=end_lat
+    )
 
     routes = osrm_data.get("routes", [])
     if not routes:
         raise ValueError("OSRM rota bulamadı")
 
-    # Kritik yol hasarlarını çek
     damage_reports = await get_critical_road_damage_reports(db)
 
-    # Her rota için risk_score hesapla
-    best_route = None
-    best_score = float("inf")
-
+    # Her rota için risk skoru hesapla
+    scored: list[tuple[float, dict, list]] = []
     for route in routes:
         coords = route.get("geometry", {}).get("coordinates", [])
         if not coords:
             continue
-
         score = _calculate_risk_score(coords, damage_reports)
+        scored.append((score, route, coords))
 
-        if score < best_score:
-            best_score = score
-            best_route = route
-            best_coords = coords
-
-    if not best_route:
+    if not scored:
         raise ValueError("Geçerli rota bulunamadı")
 
-    # En iyi rotayı veritabanına kaydet
+    # Risk skoruna göre sırala (en düşük = en güvenli)
+    scored.sort(key=lambda x: x[0])
+
+    best_score, best_route, best_coords = scored[0]
+
+    # En güvenli rotayı veritabanına kaydet
     duration = int(best_route.get("duration", 0))
     distance = float(best_route.get("distance", 0))
 
@@ -187,7 +186,19 @@ async def calculate_and_save_route(
         request_id=request_id,
     )
 
-    # Adım adım yön talimatlarını çıkar
+    # Tüm alternatifleri hazırla
+    alternatives = []
+    for idx, (score, route, coords) in enumerate(scored):
+        alternatives.append({
+            "index": idx,
+            "coordinates": coords,
+            "steps": _extract_steps(route),
+            "duration_seconds": int(route.get("duration", 0)),
+            "distance_meters": float(route.get("distance", 0)),
+            "risk_score": score,
+            "is_best": idx == 0,
+        })
+
     steps = _extract_steps(best_route)
 
-    return saved_route, best_coords, steps
+    return saved_route, best_coords, steps, alternatives

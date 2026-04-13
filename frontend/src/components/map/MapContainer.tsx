@@ -1,7 +1,7 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef } from "react";
-import type { DamageReport, Team, Volunteer } from "../../types/api";
+import type { DamageReport, RouteAlternative, Team, Volunteer } from "../../types/api";
 
 /* ── Leaflet default icon fix ──────────────────────────────────────────── */
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)
@@ -145,6 +145,10 @@ export interface RouteResult {
   riskScore: number | null;
   startLabel?: string;
   endLabel?: string;
+  /** Tüm alternatif rotalar (risk sıralı); yoksa sadece ana rota gösterilir */
+  alternatives?: RouteAlternative[];
+  /** Seçili alternatif indeksi (varsayılan: 0) */
+  selectedAltIndex?: number;
 }
 
 export interface RouteRequest {
@@ -375,42 +379,64 @@ export default function MapContainer({
     return () => clearTimeout(t);
   }, [liveReport, onRouteRequest]);
 
-  /* ── Rota polyline ────────────────────────────────────────────────── */
+  /* ── Rota polyline (ana + alternatifler) ─────────────────────────── */
   useEffect(() => {
     const layer = routeLayerRef.current;
     if (!layer) return;
     layer.clearLayers();
     if (!route?.coordinates?.length) return;
 
+    const selIdx = route.selectedAltIndex ?? 0;
+    const alts = route.alternatives ?? [];
+
     /*
      * Backend OSRM GeoJSON formatı: coordinates = [[lng, lat], ...]
      * Leaflet formatı: [lat, lng]
      */
-    const latlngs: L.LatLngExpression[] = route.coordinates.map(
-      ([lng, lat]) => [lat, lng] as L.LatLngExpression,
-    );
+    const toLatLngs = (coords: number[][]): L.LatLngExpression[] =>
+      coords.map(([lng, lat]) => [lat, lng] as L.LatLngExpression);
 
-    const color = riskColor(route.riskScore);
+    // Önce alternatif (soluk) rotaları çiz
+    alts.forEach((alt, i) => {
+      if (i === selIdx || !alt.coordinates?.length) return;
+      const ll = toLatLngs(alt.coordinates);
+      L.polyline(ll, {
+        color: "rgba(148,163,184,0.25)",
+        weight: 7,
+        opacity: 1,
+      }).addTo(layer);
+      L.polyline(ll, {
+        color: "#94a3b8",
+        weight: 4,
+        opacity: 0.5,
+        dashArray: "8 5",
+      }).addTo(layer);
+    });
 
-    // Gölge polyline (kontur efekti)
-    L.polyline(latlngs, {
-      color: "rgba(0,0,0,0.25)",
-      weight: 9,
-      opacity: 1,
-    }).addTo(layer);
-    // Ana rota
+    // Seçili rotanın koordinatları
+    const activeCoords =
+      alts.length > 0 && alts[selIdx]
+        ? alts[selIdx].coordinates
+        : route.coordinates;
+    const activeRisk =
+      alts.length > 0 && alts[selIdx] ? alts[selIdx].risk_score : route.riskScore;
+
+    const latlngs = toLatLngs(activeCoords);
+    const color = riskColor(activeRisk ?? null);
+
+    // Gölge + ana rota
+    L.polyline(latlngs, { color: "rgba(0,0,0,0.25)", weight: 9, opacity: 1 }).addTo(layer);
     L.polyline(latlngs, { color, weight: 6, opacity: 0.92 }).addTo(layer);
 
-    // A/B marker'ları OSRM'in döndürdüğü gerçek başlangıç/bitiş noktalarına koy
     const first = latlngs[0];
     const last = latlngs[latlngs.length - 1];
 
     const riskLabel =
-      route.riskScore == null
+      activeRisk == null
         ? ""
-        : route.riskScore >= 7
+        : activeRisk >= 7
           ? "⚠️ Yüksek Risk"
-          : route.riskScore >= 4
+          : activeRisk >= 4
             ? "Orta Risk"
             : "Güvenli Rota";
 

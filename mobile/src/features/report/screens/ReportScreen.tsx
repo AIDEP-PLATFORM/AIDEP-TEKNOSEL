@@ -14,7 +14,7 @@ import TopBar from '../../../shared/components/TopBar';
 import FloatingBubbles from '../../../shared/components/FloatingBubbles';
 import { useAuthStore } from '../../../core/stores/auth.store';
 import { useMapStore } from '../../../core/stores/map.store';
-import api from '../../../core/api/axiosInstance';
+import { reportService } from '../services/report.service';
 import { showToast } from '../../../shared/components/Toast';
 
 // Yolun geçilemez olduğunu belirten sınıflar
@@ -154,22 +154,12 @@ export default function ReportScreen() {
     setAiResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append('lat', String(loc.lat));
-      formData.append('lng', String(loc.lon));
-      formData.append('description', description);
-      formData.append('photo', {
-        uri: photos[0],
-        type: 'image/jpeg',
-        name: 'photo.jpg',
-      } as any);
-
-      const response = await api.post('/damage', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 40000, // AI analiz için 40 saniye
+      const data = await reportService.submitReport({
+        lat: loc.lat,
+        lng: loc.lon,
+        description,
+        photoUri: photos[0],
       });
-
-      const data = response.data;
       setAiResult({
         damage_class: data.damage_class,
         severity: data.severity,

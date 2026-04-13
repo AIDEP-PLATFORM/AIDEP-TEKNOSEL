@@ -18,21 +18,26 @@ export interface DamageReportListResponse {
   items: DamageReport[];
 }
 
-export interface RouteCoordinate {
-  lat: number;
-  lng: number;
+export interface RouteAlternative {
+  index: number;
+  coordinates: number[][];   // [[lng, lat], ...] — backend GeoJSON formatı
+  duration_seconds: number;
+  distance_meters: number;
+  risk_score: number;
+  is_best: boolean;
 }
 
 export interface Route {
   id: string;
   volunteer_id: string | null;
   request_id: string | null;
-  coordinates: RouteCoordinate[];
+  coordinates: number[][];   // [[lng, lat], ...] — backend GeoJSON formatı
   duration_seconds: number | null;
   distance_meters: number | null;
   risk_score: number | null;
   status: string;
   created_at: string;
+  alternatives?: RouteAlternative[];
 }
 
 export interface RouteCalculateRequest {
