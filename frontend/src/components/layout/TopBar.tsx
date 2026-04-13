@@ -55,11 +55,13 @@ const TopBar: React.FC = () => {
       flexShrink={0}
       style={{
         background:
-          "linear-gradient(180deg, rgba(26,35,50,0.92) 0%, rgba(18,26,38,0.88) 100%)",
+          "linear-gradient(180deg, rgba(28,38,54,0.94) 0%, rgba(22,30,43,0.9) 52%, rgba(18,26,38,0.88) 100%)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
         boxShadow: "0 4px 24px rgba(0,0,0,0.22)",
+        transition:
+          "background 0.45s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s ease",
       }}
     >
       {/* ── Breadcrumb ──────────────────────────────────────────────── */}
@@ -70,7 +72,7 @@ const TopBar: React.FC = () => {
               fontSize="sm"
               fontWeight="500"
               color="whiteAlpha.600"
-              transition="color 0.2s"
+              transition="color 0.35s cubic-bezier(0.4, 0, 0.2, 1)"
               _hover={{ color: "#fca5a5" }}
             >
               Ana Sayfa

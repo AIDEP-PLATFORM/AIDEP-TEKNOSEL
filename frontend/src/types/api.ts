@@ -45,6 +45,23 @@ export interface Team {
   created_at: string;
 }
 
+/** GET /volunteers/teams/locations — harita için ekip üyesi konumları */
+export interface TeamMemberLocation {
+  volunteer_id: string;
+  lat: number | null;
+  lng: number | null;
+}
+
+export interface TeamLocationSnapshot {
+  team_id: string;
+  team_name: string;
+  status: string;
+  assigned_damage_id: string | null;
+  damage_lat: number | null;
+  damage_lng: number | null;
+  members: TeamMemberLocation[];
+}
+
 export interface TeamCreateBody {
   name: string;
   organization: string;

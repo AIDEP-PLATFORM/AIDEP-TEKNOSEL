@@ -40,9 +40,9 @@ const LoginScreen = () => {
       setErrorMsg('Geçerli bir e-posta adresi giriniz.');
       return;
     }
-    const err = await login(email, password);
+    const err = await login(email.trim(), password);
     if (err) {
-      setErrorMsg('E-posta adresi veya şifre yanlış.');
+      setErrorMsg(err);
     }
   };
 

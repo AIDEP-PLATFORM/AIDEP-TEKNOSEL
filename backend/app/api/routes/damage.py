@@ -15,7 +15,7 @@ from app.api.dependencies.db import get_db
 from app.api.routes.websocket import ws_manager
 from app.crud.damage_report import (
     create_damage_report,
-    get_damage_report_by_id,
+    get_damage_report_by_id_with_coords,
     get_damage_reports,
 )
 from app.models.user import User
@@ -135,8 +135,7 @@ async def list_reports(
     )
 
     responses = []
-    for item in items:
-        lat, lng = _extract_coords(item)
+    for item, lat, lng in items:
         responses.append(_to_response(item, lat, lng))
 
     return DamageReportListResponse(total=total, items=responses)
@@ -148,31 +147,14 @@ async def get_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    report = await get_damage_report_by_id(db, report_id)
-    if not report:
+    row = await get_damage_report_by_id_with_coords(db, report_id)
+    if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rapor bulunamadı")
-
-    lat, lng = _extract_coords(report)
+    report, lat, lng = row
     return _to_response(report, lat, lng)
 
 
 # ── Yardımcı fonksiyonlar ─────────────────────────────────────────────────────
-
-def _extract_coords(report) -> tuple[Optional[float], Optional[float]]:
-    """
-    GeoAlchemy2 Geography alanından lat/lng çıkarır.
-    Konum POINT(lng lat) formatında saklanır.
-    """
-    try:
-        if report.location is None:
-            return None, None
-        # WKT formatı: "POINT(lng lat)"
-        from geoalchemy2.shape import to_shape
-        point = to_shape(report.location)
-        return point.y, point.x  # lat=y, lng=x
-    except Exception:
-        return None, None
-
 
 def _to_response(report, lat, lng) -> DamageReportResponse:
     return DamageReportResponse(

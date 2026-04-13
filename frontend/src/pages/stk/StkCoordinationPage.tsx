@@ -1,5 +1,6 @@
-import { Box, Flex, Grid, Text } from "@chakra-ui/react";
+import { Box, Flex, Grid, Menu, Text } from "@chakra-ui/react";
 import {
+  ChevronDown,
   ClipboardList,
   MapPin,
   Navigation,
@@ -8,13 +9,13 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
+import StkGlassCard from "../../components/stk/StkGlassCard";
+import StkPageShell from "../../components/stk/StkPageShell";
 import damageService from "../../services/damage.service";
 import routingService from "../../services/routing.service";
 import volunteerService from "../../services/volunteer.service";
-import StkGlassCard from "../../components/stk/StkGlassCard";
-import StkPageShell from "../../components/stk/StkPageShell";
-import type { DamageReport, Team, Volunteer } from "../../types/api";
 import { useAuthStore } from "../../stores/authStore";
+import type { DamageReport, Team, Volunteer } from "../../types/api";
 
 const TEAM_STATUS_LABEL: Record<string, string> = {
   available: "Müsait",
@@ -28,6 +29,69 @@ const VOLUNTEER_STATUS_LABEL: Record<string, string> = {
   on_mission: "Görevde",
 };
 
+/** Native <select> Windows’ta beyaz/beyaz veya ters kontrastlı liste çizer; STK koyu UI ile Menu kullan. */
+const stkMenuPanel = {
+  borderRadius: "12px",
+  border: "1px solid rgba(255,255,255,0.08)",
+  style: {
+    background:
+      "linear-gradient(180deg, rgba(30,41,59,0.98) 0%, rgba(22,30,43,0.99) 100%)",
+    backdropFilter: "blur(20px)",
+    boxShadow: "0 16px 48px rgba(0,0,0,0.45)",
+  },
+} as const;
+
+const StkMenuTrigger: React.FC<{
+  children: React.ReactNode;
+  maxW?: string;
+}> = ({ children, maxW = "100%" }) => {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+        maxWidth: maxW,
+        width: "100%",
+        padding: "10px 12px",
+        fontSize: "0.8rem",
+        fontWeight: 500,
+        fontFamily: "inherit",
+        borderRadius: 10,
+        background: hover ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.06)",
+        border: `1px solid ${hover ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.12)"}`,
+        color: "rgba(255,255,255,0.92)",
+        cursor: "pointer",
+        transition: "background 0.15s, border-color 0.15s",
+        textAlign: "left",
+      }}
+    >
+      <span
+        style={{
+          flex: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+        }}
+      >
+        {children}
+      </span>
+      <ChevronDown
+        size={14}
+        style={{ opacity: 0.75, flexShrink: 0 }}
+        aria-hidden
+      />
+    </button>
+  );
+};
+
 const StatMini: React.FC<{
   title: string;
   value: string;
@@ -36,13 +100,24 @@ const StatMini: React.FC<{
 }> = ({ title, value, hint, icon }) => (
   <StkGlassCard p={5}>
     <Flex justify="space-between" align="flex-start" mb={3}>
-      <Text fontSize="10px" color="whiteAlpha.500" letterSpacing="wider" fontWeight="700">
+      <Text
+        fontSize="10px"
+        color="whiteAlpha.500"
+        letterSpacing="wider"
+        fontWeight="700"
+      >
         {title}
       </Text>
-      <Box color="#ff5555" opacity={0.9}>{icon}</Box>
+      <Box color="#ff5555" opacity={0.9}>
+        {icon}
+      </Box>
     </Flex>
-    <Text fontSize="2xl" fontWeight="800" color="white" mb={1}>{value}</Text>
-    <Text fontSize="xs" color="whiteAlpha.500">{hint}</Text>
+    <Text fontSize="2xl" fontWeight="800" color="white" mb={1}>
+      {value}
+    </Text>
+    <Text fontSize="xs" color="whiteAlpha.500">
+      {hint}
+    </Text>
   </StkGlassCard>
 );
 
@@ -80,17 +155,23 @@ const StkCoordinationPage: React.FC = () => {
       const detail = (e as { response?: { data?: { detail?: unknown } } })
         ?.response?.data?.detail;
       setError(
-        typeof detail === "string" ? detail : "Veriler yüklenemedi (STK yetkisi gerekir).",
+        typeof detail === "string"
+          ? detail
+          : "Veriler yüklenemedi (STK yetkisi gerekir).",
       );
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => { if (user?.organization) setNewTeamOrg(user.organization); }, [user?.organization]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  useEffect(() => {
+    if (user?.organization) setNewTeamOrg(user.organization);
+  }, [user?.organization]);
 
   const teamNameById = (id: string | null) => {
     if (!id) return "—";
-    return teams.find((t) => t.id === id)?.name ?? id.slice(0, 8) + "…";
+    return teams.find((t) => t.id === id)?.name ?? `${id.slice(0, 8)}…`;
   };
 
   const handleCreateTeam = async () => {
@@ -128,12 +209,49 @@ const StkCoordinationPage: React.FC = () => {
   const handleAssign = async (teamId: string, damageId: string) => {
     if (!damageId) return;
     try {
-      await volunteerService.assignToDamage(teamId, { damage_report_id: damageId });
+      await volunteerService.assignToDamage(teamId, {
+        damage_report_id: damageId,
+      });
       await load();
     } catch (e: unknown) {
       const detail = (e as { response?: { data?: { detail?: unknown } } })
         ?.response?.data?.detail;
       setError(typeof detail === "string" ? detail : "Atama başarısız.");
+    }
+  };
+
+  /** Gönüllüyü ekibe al (backend: POST /volunteers/teams/{id}/members) */
+  const handleVolunteerJoinTeam = async (
+    volunteerId: string,
+    teamId: string,
+  ) => {
+    if (!teamId) return;
+    setError(null);
+    try {
+      await volunteerService.addMember(teamId, volunteerId);
+      await load();
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: unknown } } })
+        ?.response?.data?.detail;
+      setError(
+        typeof detail === "string" ? detail : "Gönüllü ekibe eklenemedi.",
+      );
+    }
+  };
+
+  /** Gönüllüyü ekipten çıkar */
+  const handleVolunteerLeaveTeam = async (
+    volunteerId: string,
+    teamId: string,
+  ) => {
+    setError(null);
+    try {
+      await volunteerService.removeMember(teamId, volunteerId);
+      await load();
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: unknown } } })
+        ?.response?.data?.detail;
+      setError(typeof detail === "string" ? detail : "Ekipten çıkarılamadı.");
     }
   };
 
@@ -147,13 +265,19 @@ const StkCoordinationPage: React.FC = () => {
         end_lat: Number.parseFloat(routeEndLat),
         end_lng: Number.parseFloat(routeEndLng),
       });
-      const km = r.distance_meters != null ? (r.distance_meters / 1000).toFixed(2) : "—";
-      const min = r.duration_seconds != null ? Math.round(r.duration_seconds / 60) : "—";
-      setRouteResult(`Tahmini mesafe: ~${km} km · Süre: ~${min} dk${r.risk_score != null ? ` · Risk skoru: ${r.risk_score}` : ""}`);
+      const km =
+        r.distance_meters != null ? (r.distance_meters / 1000).toFixed(2) : "—";
+      const min =
+        r.duration_seconds != null ? Math.round(r.duration_seconds / 60) : "—";
+      setRouteResult(
+        `Tahmini mesafe: ~${km} km · Süre: ~${min} dk${r.risk_score != null ? ` · Risk skoru: ${r.risk_score}` : ""}`,
+      );
     } catch (e: unknown) {
       const detail = (e as { response?: { data?: { detail?: unknown } } })
         ?.response?.data?.detail;
-      setRouteResult(typeof detail === "string" ? detail : "Rota hesaplanamadı.");
+      setRouteResult(
+        typeof detail === "string" ? detail : "Rota hesaplanamadı.",
+      );
     } finally {
       setRouteLoading(false);
     }
@@ -163,7 +287,10 @@ const StkCoordinationPage: React.FC = () => {
     const date = new Date(d.created_at).toLocaleDateString("tr-TR");
     const cls = d.damage_class ?? "Bilinmeyen";
     const sev = d.severity != null ? ` · Şiddet ${d.severity}` : "";
-    const loc = d.lat != null && d.lng != null ? ` · ${d.lat.toFixed(3)},${d.lng.toFixed(3)}` : "";
+    const loc =
+      d.lat != null && d.lng != null
+        ? ` · ${d.lat.toFixed(3)},${d.lng.toFixed(3)}`
+        : "";
     return `${cls}${sev} — ${date}${loc}`;
   };
 
@@ -173,11 +300,17 @@ const StkCoordinationPage: React.FC = () => {
       subtitle="Saha ekiplerinizi yönetin, gönüllüleri izleyin ve hasar noktalarına ekip atayın."
     >
       {error && (
-        <Text color="red.300" fontSize="sm" mb={4}>{error}</Text>
+        <Text color="red.300" fontSize="sm" mb={4}>
+          {error}
+        </Text>
       )}
 
       {/* Özet kartlar */}
-      <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={4} mb={8}>
+      <Grid
+        templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }}
+        gap={4}
+        mb={8}
+      >
         <StatMini
           title="AKTİF EKİPLER"
           value={String(teams.length)}
@@ -200,7 +333,9 @@ const StkCoordinationPage: React.FC = () => {
 
       {/* Yeni ekip oluştur */}
       <StkGlassCard mb={6}>
-        <Text fontWeight="700" color="white" mb={1}>Yeni Ekip Oluştur</Text>
+        <Text fontWeight="700" color="white" mb={1}>
+          Yeni Ekip Oluştur
+        </Text>
         <Text fontSize="xs" color="whiteAlpha.500" mb={4}>
           Kurumunuz adına yeni bir saha ekibi tanımlayın.
         </Text>
@@ -244,16 +379,43 @@ const StkCoordinationPage: React.FC = () => {
 
       {/* Ekipler tablosu */}
       <StkGlassCard mb={6}>
-        <Text fontWeight="700" color="white" mb={1}>Ekipler</Text>
-        <Text fontSize="xs" color="whiteAlpha.500" mb={4}>
+        <Text fontWeight="700" color="white" mb={1}>
+          Ekipler
+        </Text>
+        <Text fontSize="xs" color="whiteAlpha.500" mb={2}>
           Ekip durumunu değiştirin veya bir hasar bölgesine atayın.
         </Text>
+        {damages.length === 0 && (
+          <Text fontSize="xs" color="orange.300" mb={4} lineHeight="tall">
+            Şu an sistemde listelenecek <strong>hasar kaydı yok</strong>; bu
+            yüzden açılır menüde seçenek çıkmaz. Hasar bildirimi (mobil uygulama
+            veya API ile <code style={{ opacity: 0.85 }}>POST /damage</code>)
+            oluşturulduktan sonra burada görünür. Özet için üstteki{" "}
+            <strong>HASAR KAYDI</strong> kartına da bakın — orada da 0 ise kayıt
+            yok demektir.
+          </Text>
+        )}
         <Box overflowX="auto">
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", color: "rgba(255,255,255,0.88)" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "0.85rem",
+              color: "rgba(255,255,255,0.88)",
+            }}
+          >
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
                 {["Ekip Adı", "Kurum", "Durum", "Üye", "İşlem"].map((h) => (
-                  <th key={h} style={{ textAlign: "left", padding: "7px 10px 7px 0", color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>
+                  <th
+                    key={h}
+                    style={{
+                      textAlign: "left",
+                      padding: "7px 10px 7px 0",
+                      color: "rgba(255,255,255,0.45)",
+                      fontWeight: 600,
+                    }}
+                  >
                     {h}
                   </th>
                 ))}
@@ -261,52 +423,147 @@ const StkCoordinationPage: React.FC = () => {
             </thead>
             <tbody>
               {teams.map((t) => (
-                <tr key={t.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <td style={{ padding: "8px 10px 8px 0", fontWeight: 600 }}>{t.name}</td>
-                  <td style={{ padding: "8px 10px 8px 0", color: "rgba(255,255,255,0.6)" }}>{t.organization}</td>
+                <tr
+                  key={t.id}
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <td style={{ padding: "8px 10px 8px 0", fontWeight: 600 }}>
+                    {t.name}
+                  </td>
+                  <td
+                    style={{
+                      padding: "8px 10px 8px 0",
+                      color: "rgba(255,255,255,0.6)",
+                    }}
+                  >
+                    {t.organization}
+                  </td>
                   <td style={{ padding: "8px 10px 8px 0" }}>
-                    <span style={{
-                      display: "inline-block",
-                      padding: "2px 9px",
-                      borderRadius: 20,
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
-                      background: t.status === "available" ? "rgba(34,197,94,0.15)" : t.status === "on_mission" ? "rgba(251,191,36,0.15)" : "rgba(148,163,184,0.12)",
-                      color: t.status === "available" ? "#4ade80" : t.status === "on_mission" ? "#fbbf24" : "#94a3b8",
-                    }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "2px 9px",
+                        borderRadius: 20,
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        background:
+                          t.status === "available"
+                            ? "rgba(34,197,94,0.15)"
+                            : t.status === "on_mission"
+                              ? "rgba(251,191,36,0.15)"
+                              : "rgba(148,163,184,0.12)",
+                        color:
+                          t.status === "available"
+                            ? "#4ade80"
+                            : t.status === "on_mission"
+                              ? "#fbbf24"
+                              : "#94a3b8",
+                      }}
+                    >
                       {TEAM_STATUS_LABEL[t.status] ?? t.status}
                     </span>
                   </td>
-                  <td style={{ padding: "8px 10px 8px 0" }}>{t.member_count ?? 0} / {t.max_size}</td>
+                  <td style={{ padding: "8px 10px 8px 0" }}>
+                    {t.member_count ?? 0} / {t.max_size}
+                  </td>
                   <td style={{ padding: "8px 0" }}>
-                    <Flex gap={2} flexWrap="wrap">
-                      <select
-                        className="auth-input"
-                        style={{ maxWidth: 140, padding: "6px 10px", fontSize: "0.8rem" }}
-                        value={t.status}
-                        onChange={(e) => void handleTeamStatus(t.id, e.target.value)}
+                    <Flex gap={2} flexWrap="wrap" align="center">
+                      <Menu.Root
+                        positioning={{ placement: "bottom-start", gutter: 6 }}
                       >
-                        <option value="available">Müsait</option>
-                        <option value="on_mission">Görevde</option>
-                        <option value="inactive">Pasif</option>
-                      </select>
-                      <select
-                        className="auth-input"
-                        style={{ maxWidth: 220, padding: "6px 10px", fontSize: "0.8rem" }}
-                        defaultValue=""
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          e.target.selectedIndex = 0;
-                          if (v) void handleAssign(t.id, v);
-                        }}
-                      >
-                        <option value="">Hasara ata…</option>
-                        {damages.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {damageLabel(d)}
-                          </option>
-                        ))}
-                      </select>
+                        <Menu.Trigger asChild>
+                          <Box display="inline-block" maxW="160px">
+                            <StkMenuTrigger maxW="160px">
+                              {TEAM_STATUS_LABEL[t.status] ?? t.status}
+                            </StkMenuTrigger>
+                          </Box>
+                        </Menu.Trigger>
+                        <Menu.Positioner>
+                          <Menu.Content
+                            minW="160px"
+                            py={1}
+                            px={1}
+                            {...stkMenuPanel}
+                          >
+                            {(
+                              ["available", "on_mission", "inactive"] as const
+                            ).map((s) => (
+                              <Menu.Item
+                                key={s}
+                                value={s}
+                                cursor="pointer"
+                                color="whiteAlpha.900"
+                                borderRadius="md"
+                                py={2}
+                                px={2}
+                                fontSize="sm"
+                                _hover={{
+                                  bg: "rgba(255,255,255,0.08)",
+                                }}
+                                onClick={() => void handleTeamStatus(t.id, s)}
+                              >
+                                {TEAM_STATUS_LABEL[s]}
+                              </Menu.Item>
+                            ))}
+                          </Menu.Content>
+                        </Menu.Positioner>
+                      </Menu.Root>
+
+                      {damages.length === 0 ? (
+                        <Text
+                          as="span"
+                          fontSize="0.72rem"
+                          color="whiteAlpha.400"
+                          whiteSpace="nowrap"
+                          title="Önce hasar bildirimi oluşturulmalı"
+                        >
+                          Hasar kaydı yok
+                        </Text>
+                      ) : (
+                        <Menu.Root
+                          positioning={{ placement: "bottom-start", gutter: 6 }}
+                        >
+                          <Menu.Trigger asChild>
+                            <Box display="inline-block" maxW="min(320px, 88vw)">
+                              <StkMenuTrigger maxW="min(320px, 88vw)">
+                                Hasara ata…
+                              </StkMenuTrigger>
+                            </Box>
+                          </Menu.Trigger>
+                          <Menu.Positioner>
+                            <Menu.Content
+                              minW="280px"
+                              maxW="min(400px, 94vw)"
+                              maxH="280px"
+                              overflowY="auto"
+                              py={1}
+                              px={1}
+                              {...stkMenuPanel}
+                            >
+                              {damages.map((d) => (
+                                <Menu.Item
+                                  key={d.id}
+                                  value={d.id}
+                                  cursor="pointer"
+                                  color="whiteAlpha.900"
+                                  borderRadius="md"
+                                  py={2}
+                                  px={2}
+                                  fontSize="xs"
+                                  whiteSpace="normal"
+                                  wordBreak="break-word"
+                                  _hover={{
+                                    bg: "rgba(255,255,255,0.08)",
+                                  }}
+                                  onClick={() => void handleAssign(t.id, d.id)}
+                                >
+                                  {damageLabel(d)}
+                                </Menu.Item>
+                              ))}
+                            </Menu.Content>
+                          </Menu.Positioner>
+                        </Menu.Root>
+                      )}
                     </Flex>
                   </td>
                 </tr>
@@ -314,7 +571,9 @@ const StkCoordinationPage: React.FC = () => {
             </tbody>
           </table>
           {teams.length === 0 && (
-            <Text fontSize="sm" color="whiteAlpha.500" py={4}>Henüz ekip oluşturulmamış.</Text>
+            <Text fontSize="sm" color="whiteAlpha.500" py={4}>
+              Henüz ekip oluşturulmamış.
+            </Text>
           )}
         </Box>
       </StkGlassCard>
@@ -323,60 +582,163 @@ const StkCoordinationPage: React.FC = () => {
       <StkGlassCard mb={6}>
         <Flex align="center" gap={2} mb={1}>
           <Users size={16} color="#94a3b8" />
-          <Text fontWeight="700" color="white">Gönüllüler</Text>
+          <Text fontWeight="700" color="white">
+            Gönüllüler
+          </Text>
         </Flex>
         <Text fontSize="xs" color="whiteAlpha.500" mb={4}>
           Sisteme kayıtlı gönüllülerin güncel durumu ve ekip atamaları.
         </Text>
         <Box overflowX="auto">
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", color: "rgba(255,255,255,0.88)" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "0.85rem",
+              color: "rgba(255,255,255,0.88)",
+            }}
+          >
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
-                {["#", "Beceriler", "Durum", "Müsait", "Ekip"].map((h) => (
-                  <th key={h} style={{ textAlign: "left", padding: "7px 10px 7px 0", color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>
-                    {h}
-                  </th>
-                ))}
+                {["#", "Beceriler", "Durum", "Müsait", "Ekip", "İşlem"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: "left",
+                        padding: "7px 10px 7px 0",
+                        color: "rgba(255,255,255,0.45)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>
               {volunteers.map((v, i) => (
-                <tr key={v.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <td style={{ padding: "8px 10px 8px 0", color: "rgba(255,255,255,0.4)", fontSize: "0.78rem" }}>
+                <tr
+                  key={v.id}
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <td
+                    style={{
+                      padding: "8px 10px 8px 0",
+                      color: "rgba(255,255,255,0.4)",
+                      fontSize: "0.78rem",
+                    }}
+                  >
                     {i + 1}
                   </td>
                   <td style={{ padding: "8px 10px 8px 0" }}>
-                    {v.skills.length > 0
-                      ? v.skills.join(", ")
-                      : <span style={{ color: "rgba(255,255,255,0.35)" }}>Belirtilmemiş</span>}
+                    {v.skills.length > 0 ? (
+                      v.skills.join(", ")
+                    ) : (
+                      <span style={{ color: "rgba(255,255,255,0.35)" }}>
+                        Belirtilmemiş
+                      </span>
+                    )}
                   </td>
                   <td style={{ padding: "8px 10px 8px 0" }}>
-                    <span style={{
-                      display: "inline-block",
-                      padding: "2px 9px",
-                      borderRadius: 20,
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
-                      background: v.status === "active" ? "rgba(34,197,94,0.15)" : v.status === "on_mission" ? "rgba(251,191,36,0.15)" : "rgba(148,163,184,0.12)",
-                      color: v.status === "active" ? "#4ade80" : v.status === "on_mission" ? "#fbbf24" : "#94a3b8",
-                    }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "2px 9px",
+                        borderRadius: 20,
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        background:
+                          v.status === "active"
+                            ? "rgba(34,197,94,0.15)"
+                            : v.status === "on_mission"
+                              ? "rgba(251,191,36,0.15)"
+                              : "rgba(148,163,184,0.12)",
+                        color:
+                          v.status === "active"
+                            ? "#4ade80"
+                            : v.status === "on_mission"
+                              ? "#fbbf24"
+                              : "#94a3b8",
+                      }}
+                    >
                       {VOLUNTEER_STATUS_LABEL[v.status] ?? v.status}
                     </span>
                   </td>
                   <td style={{ padding: "8px 10px 8px 0" }}>
-                    <span style={{ color: v.is_available ? "#4ade80" : "#f87171", fontWeight: 600, fontSize: "0.8rem" }}>
+                    <span
+                      style={{
+                        color: v.is_available ? "#4ade80" : "#f87171",
+                        fontWeight: 600,
+                        fontSize: "0.8rem",
+                      }}
+                    >
                       {v.is_available ? "Evet" : "Hayır"}
                     </span>
                   </td>
-                  <td style={{ padding: "8px 0", color: "rgba(255,255,255,0.7)" }}>
+                  <td
+                    style={{
+                      padding: "8px 10px 8px 0",
+                      color: "rgba(255,255,255,0.7)",
+                    }}
+                  >
                     {teamNameById(v.team_id)}
+                  </td>
+                  <td style={{ padding: "8px 0" }}>
+                    {v.team_id ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleVolunteerLeaveTeam(
+                            v.id,
+                            v.team_id as string,
+                          )
+                        }
+                        style={{
+                          padding: "4px 10px",
+                          fontSize: "0.72rem",
+                          borderRadius: 6,
+                          border: "1px solid rgba(248,113,113,0.35)",
+                          background: "rgba(248,113,113,0.08)",
+                          color: "#fca5a5",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Ekipten çıkar
+                      </button>
+                    ) : (
+                      <select
+                        className="auth-input"
+                        style={{
+                          maxWidth: 200,
+                          padding: "6px 10px",
+                          fontSize: "0.78rem",
+                        }}
+                        defaultValue=""
+                        onChange={(e) => {
+                          const tid = e.target.value;
+                          e.target.selectedIndex = 0;
+                          if (tid) void handleVolunteerJoinTeam(v.id, tid);
+                        }}
+                      >
+                        <option value="">Ekibe ata…</option>
+                        {teams.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           {volunteers.length === 0 && (
-            <Text fontSize="sm" color="whiteAlpha.500" py={4}>Gönüllü kaydı bulunmuyor.</Text>
+            <Text fontSize="sm" color="whiteAlpha.500" py={4}>
+              Gönüllü kaydı bulunmuyor.
+            </Text>
           )}
         </Box>
       </StkGlassCard>
@@ -385,16 +747,43 @@ const StkCoordinationPage: React.FC = () => {
       <StkGlassCard>
         <Flex align="center" gap={2} mb={1}>
           <Navigation size={16} color="#94a3b8" />
-          <Text fontWeight="700" color="white">Rota Hesapla</Text>
+          <Text fontWeight="700" color="white">
+            Rota Hesapla
+          </Text>
         </Flex>
         <Text fontSize="xs" color="whiteAlpha.500" mb={4}>
-          İki nokta arasındaki tahmini mesafeyi ve süreyi hesaplayın. Koordinatları ondalıklı derece (DD) formatında girin.
+          İki nokta arasındaki tahmini mesafeyi ve süreyi hesaplayın.
+          Koordinatları ondalıklı derece (DD) formatında girin.
         </Text>
-        <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)" }} gap={3} maxW="560px">
-          <input className="auth-input" placeholder="Başlangıç enlemi (lat)" value={routeStartLat} onChange={(e) => setRouteStartLat(e.target.value)} />
-          <input className="auth-input" placeholder="Başlangıç boylamı (lng)" value={routeStartLng} onChange={(e) => setRouteStartLng(e.target.value)} />
-          <input className="auth-input" placeholder="Bitiş enlemi (lat)" value={routeEndLat} onChange={(e) => setRouteEndLat(e.target.value)} />
-          <input className="auth-input" placeholder="Bitiş boylamı (lng)" value={routeEndLng} onChange={(e) => setRouteEndLng(e.target.value)} />
+        <Grid
+          templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)" }}
+          gap={3}
+          maxW="560px"
+        >
+          <input
+            className="auth-input"
+            placeholder="Başlangıç enlemi (lat)"
+            value={routeStartLat}
+            onChange={(e) => setRouteStartLat(e.target.value)}
+          />
+          <input
+            className="auth-input"
+            placeholder="Başlangıç boylamı (lng)"
+            value={routeStartLng}
+            onChange={(e) => setRouteStartLng(e.target.value)}
+          />
+          <input
+            className="auth-input"
+            placeholder="Bitiş enlemi (lat)"
+            value={routeEndLat}
+            onChange={(e) => setRouteEndLat(e.target.value)}
+          />
+          <input
+            className="auth-input"
+            placeholder="Bitiş boylamı (lng)"
+            value={routeEndLng}
+            onChange={(e) => setRouteEndLng(e.target.value)}
+          />
         </Grid>
         <Flex mt={3} gap={3} align="center" flexWrap="wrap">
           <button
@@ -406,7 +795,10 @@ const StkCoordinationPage: React.FC = () => {
             {routeLoading ? "Hesaplanıyor…" : "Rotayı Hesapla"}
           </button>
           {routeResult && (
-            <Text fontSize="sm" color={routeResult.includes("km") ? "green.300" : "red.300"}>
+            <Text
+              fontSize="sm"
+              color={routeResult.includes("km") ? "green.300" : "red.300"}
+            >
               {routeResult}
             </Text>
           )}
