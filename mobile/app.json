@@ -4,6 +4,7 @@
     "slug": "aidep-mobile",
     "version": "1.0.0",
     "scheme": "aidep",
+    "newArchEnabled": true,
     "android": {
       "permissions": [
         "ACCESS_FINE_LOCATION",
