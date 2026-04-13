@@ -222,7 +222,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                           isActive ? "rgba(232,93,93,0.2)" : "transparent"
                         }
                         color={isActive ? "white" : "rgba(203,213,225,0.88)"}
-                        transition="all 0.2s ease"
+                        transition="background 0.35s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease, transform 0.25s ease"
                         _hover={{
                           bg: isActive
                             ? "rgba(232,93,93,0.14)"

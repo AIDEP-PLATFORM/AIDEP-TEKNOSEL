@@ -16,7 +16,13 @@ export const authService = {
   // Giriş yap
   async login(email: string, password: string): Promise<string | null> {
     try {
-      const res = await api.post('/auth/login', { email, password });
+      // Eski token'ı kaldır: interceptor login POST'una Bearer eklemesin; undefined alanlar JSON'dan düşmesin.
+      await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+      const payload = {
+        email: String(email ?? '').trim(),
+        password: String(password ?? ''),
+      };
+      const res = await api.post('/auth/login', payload);
       const { access_token, refresh_token } = res.data;
       await AsyncStorage.setItem('access_token', access_token);
       await AsyncStorage.setItem('refresh_token', refresh_token);
@@ -25,11 +31,26 @@ export const authService = {
       await AsyncStorage.setItem('user', JSON.stringify(me.data));
       return null;
     } catch (e: any) {
-      const msg = e?.response?.data?.detail;
-      if (msg === 'Invalid credentials') return 'E-posta veya şifre hatalı.';
-      if (msg === 'User not found') return 'Bu e-posta ile kayıtlı kullanıcı bulunamadı.';
-      if (msg === 'User is not active') return 'Hesabınız aktif değil.';
-      return msg ?? 'Giriş yapılamadı. Lütfen tekrar deneyin.';
+      const detail = e?.response?.data?.detail;
+      // 422: FastAPI/Pydantic — dizi veya tek mesaj
+      if (Array.isArray(detail)) {
+        const first = detail[0];
+        const field = Array.isArray(first?.loc) ? String(first.loc[first.loc.length - 1]) : '';
+        const hint =
+          field === 'email'
+            ? 'Geçerli bir e-posta adresi girin.'
+            : field === 'password'
+              ? 'Şifre alanı eksik veya geçersiz.'
+              : 'Gönderilen bilgiler sunucu tarafından kabul edilmedi.';
+        return hint;
+      }
+      if (typeof detail === 'string') {
+        if (detail === 'Invalid credentials') return 'E-posta veya şifre hatalı.';
+        if (detail === 'User not found') return 'Bu e-posta ile kayıtlı kullanıcı bulunamadı.';
+        if (detail === 'User is not active') return 'Hesabınız aktif değil.';
+        return detail;
+      }
+      return 'Giriş yapılamadı. Lütfen tekrar deneyin.';
     }
   },
 

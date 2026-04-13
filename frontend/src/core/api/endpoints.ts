@@ -21,8 +21,11 @@ export const damageEndpoints = {
 export const volunteerEndpoints = {
   list: "/volunteers",
   teams: "/volunteers/teams",
+  /** Tüm ekiplerin üye konumları (harita, anlık yenileme) */
+  teamLocations: "/volunteers/teams/locations",
   teamById: (id: string) => `/volunteers/teams/${id}` as const,
-  teamMembers: (teamId: string) => `/volunteers/teams/${teamId}/members` as const,
+  teamMembers: (teamId: string) =>
+    `/volunteers/teams/${teamId}/members` as const,
   teamMember: (teamId: string, volunteerId: string) =>
     `/volunteers/teams/${teamId}/members/${volunteerId}` as const,
   teamAssign: (teamId: string) => `/volunteers/teams/${teamId}/assign` as const,

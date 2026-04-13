@@ -15,7 +15,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import colors from '../../../shared/theme/colors';
 import Icon from '../../../shared/components/Icon';
-import { authService } from '../services/auth.service';
 import { useAuthStore } from '../../../core/stores/auth.store';
 import { showToast } from '../../../shared/components/Toast';
 
@@ -43,7 +42,7 @@ const countryCodes = [
 const RegisterScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { setUser } = useAuthStore();
+  const { register } = useAuthStore();
   const role: string = route.params?.role ?? 'normal';
   const cfg = roleConfig[role] ?? roleConfig.normal;
 
@@ -106,7 +105,7 @@ const RegisterScreen = () => {
 
     const roleMap: Record<string, string> = { normal: 'citizen', stk: 'volunteer', yetkili: 'admin' };
 
-    const err = await authService.register(email, sifre, {
+    const err = await register(email.trim(), sifre, {
       full_name: adSoyad,
       phone: `${countryCode.code}${telefon}`,
       tc_no: tc,
@@ -119,9 +118,10 @@ const RegisterScreen = () => {
       return;
     }
 
-    if (role === 'normal') {
-      navigation.navigate('Login');
-    } else {
+    // 'normal' rolü için kayıt + giriş tek adımda tamamlandı; store güncellendi,
+    // RootNavigator isLoggedIn: true görünce AppNavigator'a geçer.
+    // stk/yetkili rolleri ek adım gerektirdiğinden store güncellenmeden Step2'ye gidilir.
+    if (role !== 'normal') {
       navigation.navigate('RegisterStep2', { role, step1: form });
     }
   };

@@ -1,6 +1,12 @@
 import axiosInstance from "../core/api/axiosInstance";
 import { volunteerEndpoints } from "../core/api/endpoints";
-import type { Team, TeamAssignBody, TeamCreateBody, Volunteer } from "../types/api";
+import type {
+  Team,
+  TeamAssignBody,
+  TeamCreateBody,
+  TeamLocationSnapshot,
+  Volunteer,
+} from "../types/api";
 
 const volunteerService = {
   async fetchVolunteers(params?: {
@@ -8,29 +14,53 @@ const volunteerService = {
     is_available?: boolean;
     no_team?: boolean;
   }): Promise<Volunteer[]> {
-    const { data } = await axiosInstance.get<Volunteer[]>(volunteerEndpoints.list, { params });
+    const { data } = await axiosInstance.get<Volunteer[]>(
+      volunteerEndpoints.list,
+      { params },
+    );
     return data;
   },
 
-  async fetchTeams(params?: { team_status?: string; organization?: string }): Promise<Team[]> {
-    const { data } = await axiosInstance.get<Team[]>(volunteerEndpoints.teams, { params });
+  async fetchTeams(params?: {
+    team_status?: string;
+    organization?: string;
+  }): Promise<Team[]> {
+    const { data } = await axiosInstance.get<Team[]>(volunteerEndpoints.teams, {
+      params,
+    });
+    return data;
+  },
+
+  /** STK haritası: ekipteki gönüllülerin güncel konumları */
+  async fetchTeamLocations(): Promise<TeamLocationSnapshot[]> {
+    const { data } = await axiosInstance.get<TeamLocationSnapshot[]>(
+      volunteerEndpoints.teamLocations,
+    );
     return data;
   },
 
   async fetchTeam(teamId: string): Promise<Team> {
-    const { data } = await axiosInstance.get<Team>(volunteerEndpoints.teamById(teamId));
+    const { data } = await axiosInstance.get<Team>(
+      volunteerEndpoints.teamById(teamId),
+    );
     return data;
   },
 
   async createTeam(body: TeamCreateBody): Promise<Team> {
-    const { data } = await axiosInstance.post<Team>(volunteerEndpoints.teams, body);
+    const { data } = await axiosInstance.post<Team>(
+      volunteerEndpoints.teams,
+      body,
+    );
     return data;
   },
 
   async addMember(teamId: string, volunteerId: string): Promise<Team> {
-    const { data } = await axiosInstance.post<Team>(volunteerEndpoints.teamMembers(teamId), {
-      volunteer_id: volunteerId,
-    });
+    const { data } = await axiosInstance.post<Team>(
+      volunteerEndpoints.teamMembers(teamId),
+      {
+        volunteer_id: volunteerId,
+      },
+    );
     return data;
   },
 
@@ -42,14 +72,20 @@ const volunteerService = {
   },
 
   async assignToDamage(teamId: string, body: TeamAssignBody): Promise<Team> {
-    const { data } = await axiosInstance.post<Team>(volunteerEndpoints.teamAssign(teamId), body);
+    const { data } = await axiosInstance.post<Team>(
+      volunteerEndpoints.teamAssign(teamId),
+      body,
+    );
     return data;
   },
 
   async updateStatus(teamId: string, status: string): Promise<Team> {
-    const { data } = await axiosInstance.patch<Team>(volunteerEndpoints.teamStatus(teamId), {
-      status,
-    });
+    const { data } = await axiosInstance.patch<Team>(
+      volunteerEndpoints.teamStatus(teamId),
+      {
+        status,
+      },
+    );
     return data;
   },
 };

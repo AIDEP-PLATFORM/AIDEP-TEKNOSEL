@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 # 1. TEMEL MODEL (Okuma ve genel işlemler için, şifre içermez)
@@ -30,6 +30,13 @@ UserRegister = UserCreate
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def strip_email(cls, data: Any) -> Any:
+        if isinstance(data, dict) and isinstance(data.get("email"), str):
+            data["email"] = data["email"].strip()
+        return data
 
 
 # 4. API CEVABI (şifre HİÇBİR ZAMAN dışarı çıkmaz)

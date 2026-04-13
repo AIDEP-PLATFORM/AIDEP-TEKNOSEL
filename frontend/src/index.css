@@ -1,9 +1,21 @@
 @import "tailwindcss";
 
+/* ── Geçiş / easing (tema tutarlılığı) ───────────────────────────────── */
+:root {
+  --stk-ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --stk-ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+  --stk-dur: 0.38s;
+  --stk-dur-slow: 0.55s;
+}
+
 /* ── Custom Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: rgba(15, 20, 28, 0.6); }
-::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.45); border-radius: 99px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.45);
+  border-radius: 99px;
+  transition: background 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
 ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.55); }
 
 /* ── Global ───────────────────────────────────────────────────────────── */
@@ -11,9 +23,10 @@ html { scroll-behavior: smooth; }
 body {
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(96, 165, 250, 0.08) 0%, transparent 55%),
-    radial-gradient(ellipse 90% 70% at 0% 100%, rgba(232, 93, 93, 0.06) 0%, transparent 50%),
-    linear-gradient(165deg, #121a26 0%, #0f1419 38%, #0c1118 100%);
+    radial-gradient(ellipse 120% 85% at 100% 0%, rgba(96, 165, 250, 0.11) 0%, rgba(96, 165, 250, 0.04) 38%, transparent 58%),
+    radial-gradient(ellipse 95% 72% at 0% 100%, rgba(232, 93, 93, 0.09) 0%, rgba(232, 93, 93, 0.03) 42%, transparent 56%),
+    radial-gradient(ellipse 55% 45% at 50% 100%, rgba(99, 102, 241, 0.04) 0%, transparent 55%),
+    linear-gradient(168deg, #141c28 0%, #121a26 20%, #0f1419 45%, #0d1219 70%, #0b0f16 100%);
   font-family: 'Inter', system-ui, sans-serif;
 }
 
@@ -74,12 +87,13 @@ body {
 .cmd-bg {
   background-color: transparent;
   background-image:
-    radial-gradient(ellipse 85% 60% at 15% 20%, rgba(96, 165, 250, 0.05) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 55% at 85% 75%, rgba(232, 93, 93, 0.04) 0%, transparent 50%),
-    linear-gradient(160deg, rgba(18, 26, 38, 0.97) 0%, rgba(12, 17, 24, 0.98) 45%, rgba(15, 20, 28, 0.97) 100%),
+    radial-gradient(ellipse 88% 62% at 12% 18%, rgba(96, 165, 250, 0.07) 0%, rgba(96, 165, 250, 0.02) 45%, transparent 58%),
+    radial-gradient(ellipse 72% 58% at 88% 78%, rgba(232, 93, 93, 0.06) 0%, rgba(232, 93, 93, 0.015) 48%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 0%, rgba(129, 140, 248, 0.05) 0%, transparent 52%),
+    linear-gradient(162deg, rgba(19, 27, 38, 0.98) 0%, rgba(15, 21, 30, 0.99) 35%, rgba(12, 17, 24, 0.99) 68%, rgba(14, 19, 27, 0.98) 100%),
     linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
-  background-size: auto, auto, auto, 40px 40px, 40px 40px;
+  background-size: auto, auto, auto, auto, 40px 40px, 40px 40px;
 }
 
 /* Glassmorphism helper */
@@ -88,6 +102,10 @@ body {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border: 1px solid rgba(255, 255, 255, 0.09);
+  transition:
+    background var(--stk-dur-slow) var(--stk-ease-out),
+    border-color var(--stk-dur) var(--stk-ease-out),
+    box-shadow var(--stk-dur) var(--stk-ease-out);
 }
 
 /* Shimmer text */
@@ -498,15 +516,28 @@ body {
   font-size: 0.875rem;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  transition:
+    border-color var(--stk-dur) var(--stk-ease-out),
+    background var(--stk-dur) var(--stk-ease-out),
+    box-shadow var(--stk-dur) var(--stk-ease-out),
+    color 0.25s var(--stk-ease-out);
   box-sizing: border-box;
 }
-.auth-input::placeholder { color: rgba(255,255,255,0.28); }
+.auth-input::placeholder { color: rgba(255,255,255,0.28); transition: color 0.2s ease; }
 .auth-input:hover  { border-color: rgba(255,255,255,0.16); background: rgba(255,255,255,0.065); }
 .auth-input:focus  {
   border-color: rgba(229,62,62,0.45);
   background: rgba(255,255,255,0.07);
   box-shadow: 0 0 0 3px rgba(229,62,62,0.1), inset 0 0 0 1px rgba(229,62,62,0.05);
+}
+
+/*
+ * Native <select> açılır listesi (özellikle Windows/Chrome) çoğu zaman açık tema ile
+ * çizilir; .auth-input’un açık metin rengi (#f1f5f9) beyaz zeminde okunmaz kalır.
+ */
+select.auth-input option {
+  background-color: #f1f5f9;
+  color: #0f172a;
 }
 
 .auth-input-wrap {
@@ -544,7 +575,7 @@ body {
   width: 100%;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #e53e3e 0%, #b91c1c 100%);
+  background: linear-gradient(135deg, #e85a5a 0%, #d64545 38%, #b91c1c 100%);
   border: none;
   color: #fff;
   font-size: 0.9rem;
@@ -552,7 +583,12 @@ body {
   letter-spacing: 0.05em;
   cursor: pointer;
   box-shadow: 0 4px 20px rgba(229,62,62,0.4), inset 0 1px 0 rgba(255,255,255,0.12);
-  transition: box-shadow 0.2s, transform 0.15s, opacity 0.2s;
+  transition:
+    background var(--stk-dur-slow) var(--stk-ease-out),
+    box-shadow var(--stk-dur-slow) var(--stk-ease-out),
+    transform 0.3s var(--stk-ease-soft),
+    filter 0.35s var(--stk-ease-out),
+    opacity 0.25s ease;
   display: flex; align-items: center; justify-content: center;
   font-family: inherit;
   position: relative;
@@ -562,12 +598,18 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%);
   pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.35s var(--stk-ease-out);
 }
 .auth-btn:hover:not(:disabled) {
-  box-shadow: 0 6px 28px rgba(229,62,62,0.58), inset 0 1px 0 rgba(255,255,255,0.16);
+  background: linear-gradient(135deg, #f06f6f 0%, #e04d4d 42%, #c92a2a 100%);
+  box-shadow: 0 8px 32px rgba(229,62,62,0.48), inset 0 1px 0 rgba(255,255,255,0.18);
   transform: translateY(-1px);
+}
+.auth-btn:hover:not(:disabled)::after {
+  opacity: 0.85;
 }
 .auth-btn:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 12px rgba(229,62,62,0.4); }
 .auth-btn:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -579,10 +621,17 @@ body {
   color: rgba(255,255,255,0.55);
   width: auto;
   padding: 0 18px;
+  transition:
+    background var(--stk-dur) var(--stk-ease-out),
+    border-color var(--stk-dur) var(--stk-ease-out),
+    color var(--stk-dur) var(--stk-ease-out),
+    transform 0.3s var(--stk-ease-soft);
 }
 .auth-btn--ghost::after { display: none; }
 .auth-btn--ghost:hover:not(:disabled) {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.11);
+  border-color: rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.82);
   box-shadow: none; transform: translateY(-1px);
 }
 
